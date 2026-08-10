@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paulo Santos Bot</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <section id="telefone" aria-label="Conversa">
+        <header id="topo">
+          <span id="avatar" aria-hidden="true">💈</span>
+          <span id="quem">
+            <strong>Barbearia Paulo Santos</strong>
+            <small>online</small>
+          </span>
+        </header>
+
+        <div id="chat" role="log" aria-live="polite"></div>
+
+        <form id="composer" autocomplete="off">
+          <input id="entrada" type="text" placeholder="Mensagem" aria-label="Mensagem" />
+          <button type="submit" aria-label="Enviar">➤</button>
+        </form>
+      </section>
+
+      <aside id="painel" aria-label="Painel de teste">
+        <h1>Simulador</h1>
+        <p class="nota">
+          O bot é o mesmo motor que vai rodar no WhatsApp. Aqui ele recebe o relógio e a agenda
+          daqui do lado.
+        </p>
+
+        <h2>Relógio</h2>
+        <div class="linha">
+          <input id="clock-day" type="date" aria-label="Dia" />
+          <input id="clock-time" type="time" aria-label="Hora" />
+          <button type="button" id="clock-now">agora</button>
+        </div>
+        <p class="valor" id="relogio"></p>
+
+        <h2>Estado</h2>
+        <p class="valor" id="estado"></p>
+        <pre id="sessao"></pre>
+
+        <h2>Agenda</h2>
+        <ul id="agenda"></ul>
+        <div class="linha">
+          <button type="button" id="seed">semear</button>
+          <button type="button" id="clear-agenda">limpar</button>
+        </div>
+
+        <h2>Conversa</h2>
+        <div class="linha">
+          <button type="button" id="reset">recomeçar</button>
+          <button type="button" id="reset-tudo">apagar tudo</button>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="dist/sim/main.js"></script>
+  </body>
+</html>
