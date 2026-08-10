@@ -53,10 +53,14 @@ function resumo(choice: Choice): string {
       return choice.id;
     case "day":
       return choice.day;
+    case "period":
+      return choice.id;
     case "slot":
       return hhmm(choice.start);
     case "appointment":
       return choice.id;
+    case "periods":
+      return "outro período";
   }
 }
 

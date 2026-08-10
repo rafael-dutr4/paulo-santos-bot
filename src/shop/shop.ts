@@ -23,6 +23,16 @@ export type Service = {
 /** `[start, end)` in minutes since midnight. */
 export type Interval = { start: Minutes; end: Minutes };
 
+export type PeriodId = "manha" | "tarde" | "noite";
+
+/**
+ * Os pedaços do dia, para a conversa não despejar todos os horários de uma vez.
+ *
+ * As bordas são dado da barbearia porque o fluxo corta os horários por elas. O
+ * nome de cada pedaço ("manhã") é texto, e vive em `src/text/ptbr.ts`.
+ */
+export type Period = { id: PeriodId; from: Minutes; to: Minutes };
+
 export type Shop = {
   name: string;
   barber: string;
@@ -37,6 +47,7 @@ export type Shop = {
    * two intervals. A day with an empty list is a closed day.
    */
   hours: Record<Weekday, Interval[]>;
+  periods: Period[];
   /** Candidate start times sit on this grid. */
   slotStep: Minutes;
   /** How long before an appointment it is still possible to book it. */
@@ -68,6 +79,11 @@ export const SHOP: Shop = {
     5: [{ start: 9 * 60, end: 12 * 60 }, { start: 13 * 60, end: 20 * 60 }],
     6: [{ start: 8 * 60, end: 17 * 60 }], // sábado, direto
   },
+  periods: [
+    { id: "manha", from: 0, to: 12 * 60 },
+    { id: "tarde", from: 12 * 60, to: 16 * 60 },
+    { id: "noite", from: 16 * 60, to: 24 * 60 },
+  ],
   slotStep: 15,
   minNotice: 30,
   horizonDays: 14,

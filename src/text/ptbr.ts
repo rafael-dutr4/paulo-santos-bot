@@ -18,24 +18,23 @@ import { SHOP } from "../shop/shop.ts";
 import { hhmm, isDay, parts, weekday } from "../shop/time.ts";
 import type { Day, Minutes, Weekday } from "../shop/time.ts";
 
-export type Words = Record<string, string | number | number[]>;
+export type Words = Record<string, string | number>;
 export type Template = (words: Words) => string;
 
 /**
- * Os períodos do dia, para quebrar a lista de horários.
+ * O nome de cada período.
  *
- * O corte é aqui e não em `shop.ts` porque isto é como se fala do dia, não como
- * a barbearia funciona: o almoço da barbearia é das 12:00 às 13:00 e a tarde do
- * cliente começa depois do meio-dia de qualquer jeito.
+ * As bordas ficam em `shop.ts`, porque o fluxo corta os horários por elas. Aqui
+ * fica só como se chama cada pedaço do dia.
  */
-const PERIODOS = [
-  { nome: "manhã", emoji: "🌅", ate: 12 * 60 },
-  { nome: "tarde", emoji: "☀️", ate: 16 * 60 },
-  { nome: "noite", emoji: "🌙", ate: 24 * 60 },
-];
+const PERIODOS: Record<string, { nome: string; emoji: string }> = {
+  manha: { nome: "Manhã", emoji: "🌅" },
+  tarde: { nome: "Tarde", emoji: "☀️" },
+  noite: { nome: "Noite", emoji: "🌙" },
+};
 
-/** Quantos horários cabem numa linha sem virar parede de texto. */
-const POR_LINHA = 4;
+const periodo = (id: string): { nome: string; emoji: string } =>
+  PERIODOS[id] ?? { nome: id, emoji: "" };
 
 const DIAS = [
   "domingo",
@@ -49,37 +48,6 @@ const DIAS = [
 
 const str = (words: Words, key: string): string => String(words[key] ?? "");
 const num = (words: Words, key: string): number => Number(words[key] ?? 0);
-const nums = (words: Words, key: string): number[] => {
-  const value = words[key];
-  return Array.isArray(value) ? value : [];
-};
-
-/**
- * A grade de horários.
- *
- * Numerar trinta e quatro linhas é o que fazia a mensagem ficar impossível de
- * ler. Aqui os horários são agrupados por período e escritos em linhas de
- * quatro, e o cliente responde com a hora em vez de um número, então a lista
- * não precisa de índice nenhum.
- */
-function grade(horas: number[]): string {
-  const blocos: string[] = [];
-  let resto = [...horas];
-
-  for (const periodo of PERIODOS) {
-    const doPeriodo = resto.filter((at) => at < periodo.ate);
-    resto = resto.filter((at) => at >= periodo.ate);
-    if (doPeriodo.length === 0) continue;
-
-    const linhas: string[] = [];
-    for (let i = 0; i < doPeriodo.length; i += POR_LINHA) {
-      linhas.push(doPeriodo.slice(i, i + POR_LINHA).map(hhmm).join("   "));
-    }
-    blocos.push([`${periodo.emoji} ${periodo.nome}`, ...linhas].join("\n"));
-  }
-  return blocos.join("\n\n");
-}
-
 /** 4500 vira `R$ 45,00`. Dinheiro é inteiro em centavos até a hora de escrever. */
 export function brl(centavos: number): string {
   return `R$ ${Math.floor(centavos / 100)},${String(centavos % 100).padStart(2, "0")}`;
@@ -192,14 +160,25 @@ export const PTBR: Record<MessageKey, Template> = {
     [`${str(w, "servico")}, boa escolha. Para quando?`, "", str(w, "itens")].join("\n"),
   item_dia: (w) => `${num(w, "n")} - ${dia(str(w, "dia"))}`,
 
+  escolher_periodo: (w) =>
+    [`Para ${dia(str(w, "dia"))}. Qual período?`, "", str(w, "itens")].join("\n"),
+  item_periodo: (w) => {
+    const { nome, emoji } = periodo(str(w, "periodo"));
+    return `${num(w, "n")} - ${emoji} ${nome} (${hora(num(w, "de"))} às ${hora(num(w, "ate"))})`;
+  },
+
   escolher_hora: (w) =>
     [
-      `Horários livres em ${dia(str(w, "dia"))}:`,
+      `Horários livres na ${periodo(str(w, "periodo")).nome.toLowerCase()} de ${dia(
+        str(w, "dia"),
+      )}:`,
       "",
-      grade(nums(w, "horas")),
+      str(w, "itens"),
       "",
-      "É só responder com o horário (ex: 14:30).",
+      "Responde com o número ou com o horário.",
     ].join("\n"),
+  item_hora: (w) => `${num(w, "n")} - ${hora(num(w, "hora"))}`,
+  item_outro_periodo: (w) => `${num(w, "n")} - Ver outro período`,
 
   hora_indisponivel: () => "Esse horário não está livre 😕 Escolhe um destes:",
 

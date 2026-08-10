@@ -23,14 +23,8 @@ function resolve(params: Params | undefined): Words {
   return words;
 }
 
-function flatten(value: Param): string | number | number[] {
-  // Uma lista de números chega inteira no template: quem decide como arrumar os
-  // horários na tela é o texto, não o motor.
-  if (Array.isArray(value)) {
-    return value.every((item) => typeof item === "number")
-      ? (value as number[])
-      : (value as Message[]).map(say).join("\n");
-  }
+function flatten(value: Param): string | number {
+  if (Array.isArray(value)) return value.map(say).join("\n");
   if (typeof value === "object") return say(value);
   return value;
 }

@@ -55,9 +55,13 @@ export function input(raw: string): Input {
  * Clients answer `2`, `2)`, `opção 2` and `quero a 2`. Anything that starts
  * with digits counts, and a message that only mentions a number in the middle
  * ("marquei 2 semanas atrás") does not.
+ *
+ * O `(?![:h\d])` é o que separa uma opção de um horário. A lista de horas é
+ * numerada e o cliente também pode digitar a hora, então `9` é a nona opção e
+ * `09:00` é nove da manhã, e sem esse detalhe `09:00` viraria a opção 9.
  */
 export function leadingNumber(text: string): number | null {
-  const match = /^(?:opcao\s*|op\s*)?(\d{1,2})\b/.exec(text);
+  const match = /^(?:opcao\s*|op\s*)?(\d{1,2})(?![:h\d])\b/.exec(text);
   return match ? Number(match[1]) : null;
 }
 
@@ -80,6 +84,17 @@ export function choice(...kinds: Choice["kind"][]): Matcher {
     const chosen = session.choices[n - 1];
     if (!chosen || !kinds.includes(chosen.kind)) return null;
     return { number: n, choice: chosen };
+  };
+}
+
+/** O primeiro que reconhecer a mensagem, para uma transição aceitar duas formas. */
+export function either(...matchers: Matcher[]): Matcher {
+  return (input, session, ctx) => {
+    for (const matcher of matchers) {
+      const match = matcher(input, session, ctx);
+      if (match) return match;
+    }
+    return null;
   };
 }
 
@@ -127,9 +142,11 @@ export const anyHour: Matcher = (input) => {
 /** Anything the client typed, as long as it is not empty. */
 export const anything: Matcher = (input) => (input.text === "" ? null : { text: input.raw });
 
-/** A name: anything short enough to be one, and not a number. */
+/** A name: anything short enough to be one, and neither a number nor an hour. */
 export const name: Matcher = (input) => {
   if (input.text === "" || input.raw.length > 60) return null;
   if (leadingNumber(input.text) !== null) return null;
+  // Quem responde "14:15" aqui errou a pergunta, não se chama 14:15.
+  if (hourIn(input.text) !== null) return null;
   return { text: input.raw };
 };

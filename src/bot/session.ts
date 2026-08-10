@@ -7,7 +7,7 @@
  */
 
 import type { Agenda } from "../shop/agenda.ts";
-import type { ServiceId, Shop } from "../shop/shop.ts";
+import type { PeriodId, ServiceId, Shop } from "../shop/shop.ts";
 import type { Day, Minutes, Moment } from "../shop/time.ts";
 
 export type StateName = string;
@@ -26,13 +26,17 @@ export type StateName = string;
 export type Choice =
   | { kind: "service"; id: ServiceId }
   | { kind: "day"; day: Day }
+  | { kind: "period"; id: PeriodId }
   | { kind: "slot"; start: Minutes }
-  | { kind: "appointment"; id: string };
+  | { kind: "appointment"; id: string }
+  /** "ver outro período", a última linha da lista de horários. */
+  | { kind: "periods" };
 
 /** What is being assembled during a booking. */
 export type Draft = {
   serviceId?: ServiceId;
   day?: Day;
+  period?: PeriodId;
   start?: Minutes;
   /** Set while remarcando: the appointment being replaced. */
   replacing?: string;

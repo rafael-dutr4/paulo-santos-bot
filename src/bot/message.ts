@@ -14,9 +14,6 @@
  * state names `escolher_servico` with a list of `item_servico`, and the text
  * module words each item and joins them.
  *
- * A param can also be a list of numbers, and then the text module decides how
- * to arrange it. The free hours go this way: the engine says which minutes are
- * free and the text module is what groups them in manhã, tarde and noite.
  */
 
 export type MessageKey =
@@ -35,7 +32,11 @@ export type MessageKey =
   | "item_servico"
   | "escolher_dia"
   | "item_dia"
+  | "escolher_periodo"
+  | "item_periodo"
   | "escolher_hora"
+  | "item_hora"
+  | "item_outro_periodo"
   | "hora_indisponivel"
   | "sem_horarios"
   | "pedir_nome"
@@ -55,7 +56,7 @@ export type MessageKey =
   | "cancelado"
   | "cancelamento_abortado";
 
-export type Param = string | number | number[] | Message | Message[];
+export type Param = string | number | Message | Message[];
 export type Params = Record<string, Param>;
 
 export type Message = { key: MessageKey; params?: Params };

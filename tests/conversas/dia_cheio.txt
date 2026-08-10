@@ -24,6 +24,9 @@
 < escolher_dia
 
 > 1
+< escolher_periodo
+
+> 1
 < escolher_hora
 
 > 09:00

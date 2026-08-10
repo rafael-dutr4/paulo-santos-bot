@@ -37,6 +37,9 @@ test("the number has to be at the start of the message", () => {
   assert.equal(leadingNumber("opcao 3"), 3);
   assert.equal(leadingNumber("quero a 2"), null);
   assert.equal(leadingNumber("obrigado"), null);
+  // Um horário não é uma opção, senão 09:00 viraria a nona linha da lista.
+  assert.equal(leadingNumber("09:00"), null);
+  assert.equal(leadingNumber("9h30"), null);
 });
 
 test("an option only claims its own number", () => {
@@ -99,5 +102,6 @@ test("anything takes what was typed, a name refuses a number", () => {
   assert.equal(match(anything, "   "), null);
   assert.equal(match(name, "Rafa")?.text, "Rafa");
   assert.equal(match(name, "2"), null);
+  assert.equal(match(name, "14:15"), null, "quem responde uma hora aqui errou a pergunta");
   assert.equal(match(name, "x".repeat(61)), null);
 });

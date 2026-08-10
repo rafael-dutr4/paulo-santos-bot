@@ -38,21 +38,32 @@ test("a list of messages becomes one line per item", () => {
   assert.ok(text.includes("1 - Corte (30 min, R$ 45,00)\n2 - Barba"), text);
 });
 
-test("the hours are grouped by period, four to a line", () => {
-  const horas = [540, 570, 600, 630, 660, 780, 810, 960, 990];
-  const text = say(msg("escolher_hora", { dia: "2026-08-11", horas }));
-
-  assert.ok(text.includes("🌅 manhã\n09:00   09:30   10:00   10:30\n11:00"), text);
-  assert.ok(text.includes("☀️ tarde\n13:00   13:30"), text);
-  assert.ok(text.includes("🌙 noite\n16:00   16:30"), text);
-  assert.ok(text.includes("responder com o horário"), text);
+test("a period says its name and the range it covers", () => {
+  const text = say(
+    msg("escolher_periodo", {
+      dia: "2026-08-11",
+      itens: [
+        msg("item_periodo", { n: 1, periodo: "manha", de: 540, ate: 690, quantos: 11 }),
+        msg("item_periodo", { n: 2, periodo: "noite", de: 960, ate: 1110, quantos: 11 }),
+      ],
+    }),
+  );
+  assert.ok(text.includes("Para terça-feira, 11/08"), text);
+  assert.ok(text.includes("1 - 🌅 Manhã (09:00 às 11:30)"), text);
+  assert.ok(text.includes("2 - 🌙 Noite (16:00 às 18:30)"), text);
 });
 
-test("a period with no free hour does not print an empty heading", () => {
-  const text = say(msg("escolher_hora", { dia: "2026-08-11", horas: [960, 990] }));
-  assert.ok(!text.includes("manhã"), text);
-  assert.ok(!text.includes("tarde"), text);
-  assert.ok(text.includes("🌙 noite"), text);
+test("the hours of a period are numbered", () => {
+  const text = say(
+    msg("escolher_hora", {
+      dia: "2026-08-11",
+      periodo: "manha",
+      itens: [msg("item_hora", { n: 1, hora: 540 }), msg("item_hora", { n: 2, hora: 555 })],
+    }),
+  );
+  assert.ok(text.includes("Horários livres na manhã de terça-feira, 11/08"), text);
+  assert.ok(text.includes("1 - 09:00\n2 - 09:15"), text);
+  assert.ok(text.includes("número ou com o horário"), text);
 });
 
 test("the opening hours group the days that are the same", () => {

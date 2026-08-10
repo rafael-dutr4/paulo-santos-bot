@@ -14,7 +14,7 @@
 
 import type { Agenda } from "./agenda.ts";
 import { busyOn } from "./agenda.ts";
-import type { Interval, Service, Shop } from "./shop.ts";
+import type { Interval, Period, Service, Shop } from "./shop.ts";
 import type { Day, Minutes, Moment } from "./time.ts";
 import { addDays, weekday } from "./time.ts";
 
@@ -61,6 +61,24 @@ export function freeSlots(
     }
   }
   return slots;
+}
+
+/**
+ * Os horários livres separados por período, sem os períodos vazios.
+ *
+ * É o que deixa a conversa perguntar "manhã ou tarde?" antes de listar hora por
+ * hora: um dia inteiro dá trinta e poucas opções e nenhum cliente lê isso.
+ */
+export function byPeriod(
+  shop: Shop,
+  hours: Minutes[],
+): { period: Period; hours: Minutes[] }[] {
+  return shop.periods
+    .map((period) => ({
+      period,
+      hours: hours.filter((at) => at >= period.from && at < period.to),
+    }))
+    .filter((group) => group.hours.length > 0);
 }
 
 /** The next days that are open and have at least one free slot for this service. */
