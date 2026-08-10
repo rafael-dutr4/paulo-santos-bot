@@ -1,0 +1,108 @@
+/**
+ * Reading what the client typed.
+ *
+ * A matcher looks at one incoming message and either claims it (returning what
+ * it understood) or returns null and lets the next transition try. The
+ * transitions of a state are tried in order, so the first matcher that claims
+ * the message wins, and ordering is how ambiguity is resolved.
+ */
+
+import type { Choice, Ctx, Session } from "./session.ts";
+
+export type Input = {
+  /** Exactly what the client typed, kept for anything that is copied back (a name). */
+  raw: string;
+  /** Lowercase, without accents, without punctuation at the edges. */
+  text: string;
+};
+
+export type Match = {
+  /** The number the client answered, when there was one. */
+  number?: number;
+  /** What that number meant, resolved against what was offered. */
+  choice?: Choice;
+  /** The text the client typed, for the states that capture it. */
+  text?: string;
+};
+
+export type Matcher = (input: Input, session: Session, ctx: Ctx) => Match | null;
+
+/**
+ * `"Não!"`, `"nao"` and `"  NAO  "` have to be the same string before anything
+ * else happens. Splitting the accent off its letter (NFD) and dropping the
+ * accents is one line and covers every word in Portuguese, which a table of
+ * replacements never would.
+ */
+export function normalize(raw: string): string {
+  return raw
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[!?.,;:]+$/, "");
+}
+
+export function input(raw: string): Input {
+  return { raw: raw.trim(), text: normalize(raw) };
+}
+
+/**
+ * The number at the start of the message.
+ *
+ * Clients answer `2`, `2)`, `opção 2` and `quero a 2`. Anything that starts
+ * with digits counts, and a message that only mentions a number in the middle
+ * ("marquei 2 semanas atrás") does not.
+ */
+export function leadingNumber(text: string): number | null {
+  const match = /^(?:opcao\s*|op\s*)?(\d{1,2})\b/.exec(text);
+  return match ? Number(match[1]) : null;
+}
+
+/** A fixed option of a static menu. */
+export function option(n: number): Matcher {
+  return (input) => (leadingNumber(input.text) === n ? { number: n } : null);
+}
+
+/**
+ * A number resolved against the list the bot has just presented.
+ *
+ * `kinds` restricts what this transition accepts, so a state that offers hours
+ * and a "ver mais horários" line can route each to a different place while both
+ * are numbers in the same list.
+ */
+export function choice(...kinds: Choice["kind"][]): Matcher {
+  return (input, session) => {
+    const n = leadingNumber(input.text);
+    if (n === null) return null;
+    const chosen = session.choices[n - 1];
+    if (!chosen || !kinds.includes(chosen.kind)) return null;
+    return { number: n, choice: chosen };
+  };
+}
+
+/** Any of these words, as a whole word anywhere in the message. */
+export function keyword(...words: string[]): Matcher {
+  return (input) => {
+    const found = words.some((word) =>
+      new RegExp(`(^|\\s)${word}(\\s|$)`).test(input.text),
+    );
+    return found ? {} : null;
+  };
+}
+
+export const yes: Matcher = keyword(
+  "sim", "s", "isso", "confirmo", "confirmar", "pode", "claro", "ok", "beleza", "isso mesmo",
+);
+
+export const no: Matcher = keyword("nao", "n", "negativo", "cancela", "melhor nao");
+
+/** Anything the client typed, as long as it is not empty. */
+export const anything: Matcher = (input) => (input.text === "" ? null : { text: input.raw });
+
+/** A name: anything short enough to be one, and not a number. */
+export const name: Matcher = (input) => {
+  if (input.text === "" || input.raw.length > 60) return null;
+  if (leadingNumber(input.text) !== null) return null;
+  return { text: input.raw };
+};
