@@ -20,7 +20,17 @@ import type { Choice, Ctx, Session } from "./session.ts";
 import { clearDraft } from "./session.ts";
 import type { Enter, Flow, Outcome, State } from "./engine.ts";
 import { run, says, silent } from "./engine.ts";
-import { anything, choice, keyword, name as aName, no, option, yes } from "./match.ts";
+import {
+  anyHour,
+  anything,
+  choice,
+  keyword,
+  name as aName,
+  no,
+  offeredHour,
+  option,
+  yes,
+} from "./match.ts";
 import { msg } from "./message.ts";
 
 /** How many days the day menu offers before the client has to say a date. */
@@ -162,20 +172,20 @@ const escolherHora: State = {
     const hours = freeSlots(ctx.shop, agendaFor(session, ctx), day, service, ctx.now);
     if (hours.length === 0) return { session, messages: [], go: "escolher_dia" };
 
-    // Todos os horários de uma vez. Paginar economiza rolagem e custa uma
-    // pergunta a mais, e o cliente que rola a lista já sabe o que quer.
+    // Todos os horários de uma vez, sem numerar. A lista é longa demais para um
+    // menu numerado, então o cliente responde com a hora, e as ofertas
+    // continuam guardadas para conferir a resposta contra elas.
     const choices: Choice[] = hours.map((start) => ({ kind: "slot", start }));
-    const itens = hours.map((start, i) => msg("item_hora", { n: i + 1, hora: start }));
 
     return {
       session: { ...session, choices },
-      messages: [msg("escolher_hora", { dia: day, itens })],
+      messages: [msg("escolher_hora", { dia: day, horas: hours })],
     };
   },
   exits: ["menu", "escolher_dia"],
   on: [
     {
-      match: choice("slot"),
+      match: offeredHour,
       act: (session, match) => ({
         session:
           match.choice?.kind === "slot"
@@ -185,6 +195,9 @@ const escolherHora: State = {
       go: (session) => (session.name ? "confirmar" : "pedir_nome"),
       exits: ["confirmar", "pedir_nome"],
     },
+    // Uma hora que dá para ler mas não está livre merece resposta melhor do que
+    // "não entendi", e a ordem das transições é o que separa as duas.
+    { match: anyHour, go: "hora_indisponivel" },
   ],
 };
 
@@ -420,6 +433,10 @@ export const FLOW: Flow = {
     escolher_servico: escolherServico,
     escolher_dia: escolherDia,
     escolher_hora: escolherHora,
+    hora_indisponivel: {
+      enter: says(msg("hora_indisponivel")),
+      goto: "escolher_hora",
+    },
     sem_horarios: { enter: says(msg("sem_horarios")), goto: "menu" },
     pedir_nome: pedirNome,
     confirmar,

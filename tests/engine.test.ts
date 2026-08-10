@@ -108,7 +108,7 @@ test("an unknown state name is a bug in the table, and it says so", () => {
 test("an hour taken between the offer and the sim is not booked", () => {
   let session = newSession("5511911111111");
   let agenda: Agenda = [];
-  for (const text of ["oi", "1", "1", "1", "1", "Rafa"]) {
+  for (const text of ["oi", "1", "1", "1", "09:00", "Rafa"]) {
     const outcome = reply(session, text, ctx(agenda));
     session = outcome.session;
     agenda = applyAll(agenda, outcome.effects);

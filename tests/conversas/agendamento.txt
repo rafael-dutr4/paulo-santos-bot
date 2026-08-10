@@ -15,7 +15,12 @@
 > 1
 < escolher_hora
 
-> 1
+# Uma hora que dá para ler mas não está livre não é "não entendi".
+> 07:00
+< hora_indisponivel
+< escolher_hora
+
+> 09:00
 < pedir_nome
 
 > Rafa

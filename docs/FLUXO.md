@@ -50,7 +50,8 @@ Opções do menu:
 | --- | --- |
 | `escolher_servico` | Lista os serviços com preço e duração. Guarda a lista nas ofertas da sessão. Vai para `escolher_dia`, ou `sem_horarios` se não houver dia livre. |
 | `escolher_dia` | Lista os próximos dias que têm horário livre para o serviço escolhido. Dia fechado e dia lotado não aparecem. |
-| `escolher_hora` | Lista todos os horários livres do dia, de uma vez. O tamanho da lista se ajusta pelo `slotStep` da barbearia, não por paginação. |
+| `escolher_hora` | Mostra todos os horários livres do dia numa grade, agrupados em manhã, tarde e noite. Não é menu numerado: o cliente responde com a hora (`14:30`, `14h30`, `às 14h30`), e a resposta ainda é conferida contra a lista que foi oferecida. |
+| `hora_indisponivel` | A hora dá para ler mas não está livre. Diz isso e mostra a grade de novo, em vez de responder "não entendi". |
 | `pedir_nome` | Só aparece para quem o bot ainda não conhece. |
 | `confirmar` | Repete serviço, dia, hora e valor, e pergunta. |
 | `agendado` | Confirma e **segue** para o `menu`. |
@@ -84,8 +85,9 @@ dois efeitos:
 
 ## O que o fluxo não faz
 
-- Não entende texto livre. Quem escreve "quero cortar o cabelo amanhã" recebe o
-  menu de novo, e depois de três tentativas fala com o barbeiro.
+- Não entende texto livre, com uma exceção: a hora em `escolher_hora`. Quem
+  escreve "quero cortar o cabelo amanhã" recebe o menu de novo, e depois de três
+  tentativas fala com o barbeiro.
 - Não escolhe profissional. A barbearia tem uma agenda só.
 - Não manda lembrete véspera. Isso depende de alguém rodando fora da conversa,
   o que é trabalho da integração.

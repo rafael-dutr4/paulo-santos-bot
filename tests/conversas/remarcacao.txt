@@ -22,7 +22,7 @@
 > 2
 < escolher_hora
 
-> 1
+> 09:00
 < resumo_remarcacao
 < confirmar
 

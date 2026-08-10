@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  anyHour,
   anything,
   choice,
+  offeredHour,
   input,
   keyword,
   leadingNumber,
@@ -59,6 +61,22 @@ test("a number means nothing without the list that was offered", () => {
   // Out of the list, and out of an empty list.
   assert.equal(match(choice("slot"), "9", offered), null);
   assert.equal(match(choice("slot"), "1"), null);
+});
+
+test("a typed hour is still checked against what was offered", () => {
+  const offered: Session = {
+    ...session,
+    choices: [{ kind: "slot", start: 540 }, { kind: "slot", start: 870 }],
+  };
+  assert.deepEqual(match(offeredHour, "14:30", offered)?.choice, { kind: "slot", start: 870 });
+  assert.deepEqual(match(offeredHour, "14h30", offered)?.choice, { kind: "slot", start: 870 });
+  assert.deepEqual(match(offeredHour, "às 14:30", offered)?.choice, { kind: "slot", start: 870 });
+  assert.deepEqual(match(offeredHour, "quero 9h", offered)?.choice, { kind: "slot", start: 540 });
+
+  // Legível, mas não está na lista: outra transição responde melhor que "não entendi".
+  assert.equal(match(offeredHour, "07:00", offered), null);
+  assert.equal(match(anyHour, "07:00", offered)?.number, 420);
+  assert.equal(match(anyHour, "amanhã", offered), null);
 });
 
 test("a keyword matches whole words only", () => {

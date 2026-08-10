@@ -18,8 +18,24 @@ import { SHOP } from "../shop/shop.ts";
 import { hhmm, isDay, parts, weekday } from "../shop/time.ts";
 import type { Day, Minutes, Weekday } from "../shop/time.ts";
 
-export type Words = Record<string, string | number>;
+export type Words = Record<string, string | number | number[]>;
 export type Template = (words: Words) => string;
+
+/**
+ * Os períodos do dia, para quebrar a lista de horários.
+ *
+ * O corte é aqui e não em `shop.ts` porque isto é como se fala do dia, não como
+ * a barbearia funciona: o almoço da barbearia é das 12:00 às 13:00 e a tarde do
+ * cliente começa depois do meio-dia de qualquer jeito.
+ */
+const PERIODOS = [
+  { nome: "manhã", emoji: "🌅", ate: 12 * 60 },
+  { nome: "tarde", emoji: "☀️", ate: 16 * 60 },
+  { nome: "noite", emoji: "🌙", ate: 24 * 60 },
+];
+
+/** Quantos horários cabem numa linha sem virar parede de texto. */
+const POR_LINHA = 4;
 
 const DIAS = [
   "domingo",
@@ -33,6 +49,36 @@ const DIAS = [
 
 const str = (words: Words, key: string): string => String(words[key] ?? "");
 const num = (words: Words, key: string): number => Number(words[key] ?? 0);
+const nums = (words: Words, key: string): number[] => {
+  const value = words[key];
+  return Array.isArray(value) ? value : [];
+};
+
+/**
+ * A grade de horários.
+ *
+ * Numerar trinta e quatro linhas é o que fazia a mensagem ficar impossível de
+ * ler. Aqui os horários são agrupados por período e escritos em linhas de
+ * quatro, e o cliente responde com a hora em vez de um número, então a lista
+ * não precisa de índice nenhum.
+ */
+function grade(horas: number[]): string {
+  const blocos: string[] = [];
+  let resto = [...horas];
+
+  for (const periodo of PERIODOS) {
+    const doPeriodo = resto.filter((at) => at < periodo.ate);
+    resto = resto.filter((at) => at >= periodo.ate);
+    if (doPeriodo.length === 0) continue;
+
+    const linhas: string[] = [];
+    for (let i = 0; i < doPeriodo.length; i += POR_LINHA) {
+      linhas.push(doPeriodo.slice(i, i + POR_LINHA).map(hhmm).join("   "));
+    }
+    blocos.push([`${periodo.emoji} ${periodo.nome}`, ...linhas].join("\n"));
+  }
+  return blocos.join("\n\n");
+}
 
 /** 4500 vira `R$ 45,00`. Dinheiro é inteiro em centavos até a hora de escrever. */
 export function brl(centavos: number): string {
@@ -147,8 +193,15 @@ export const PTBR: Record<MessageKey, Template> = {
   item_dia: (w) => `${num(w, "n")} - ${dia(str(w, "dia"))}`,
 
   escolher_hora: (w) =>
-    [`Horários livres em ${dia(str(w, "dia"))}:`, "", str(w, "itens")].join("\n"),
-  item_hora: (w) => `${num(w, "n")} - ${hora(num(w, "hora"))}`,
+    [
+      `Horários livres em ${dia(str(w, "dia"))}:`,
+      "",
+      grade(nums(w, "horas")),
+      "",
+      "É só responder com o horário (ex: 14:30).",
+    ].join("\n"),
+
+  hora_indisponivel: () => "Esse horário não está livre 😕 Escolhe um destes:",
 
   sem_horarios: () =>
     "Poxa, não tenho horário livre para esse serviço nos próximos dias 😕 Manda uma mensagem que a gente dá um jeito.",

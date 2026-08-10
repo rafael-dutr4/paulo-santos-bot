@@ -7,6 +7,8 @@
  * the message wins, and ordering is how ambiguity is resolved.
  */
 
+import type { Minutes } from "../shop/time.ts";
+import { parseHhmm } from "../shop/time.ts";
 import type { Choice, Ctx, Session } from "./session.ts";
 
 export type Input = {
@@ -96,6 +98,31 @@ export const yes: Matcher = keyword(
 );
 
 export const no: Matcher = keyword("nao", "n", "negativo", "cancela", "melhor nao");
+
+/** "às 14:30", "pra 14h", "quero 14:30" e "14:30" são a mesma coisa. */
+function hourIn(text: string): Minutes | null {
+  return parseHhmm(text.replace(/^(as|pra|para|quero|pode ser|marca)\s+/, ""));
+}
+
+/**
+ * Um horário digitado, resolvido contra o que foi oferecido.
+ *
+ * A lista de horários não é numerada (são muitos), então o cliente responde com
+ * a hora. Mesmo assim a resposta continua sendo conferida contra `choices`, que
+ * é o que garante que ninguém marca um horário que o bot não ofereceu.
+ */
+export const offeredHour: Matcher = (input, session) => {
+  const at = hourIn(input.text);
+  if (at === null) return null;
+  const chosen = session.choices.find((c) => c.kind === "slot" && c.start === at);
+  return chosen ? { number: at, choice: chosen } : null;
+};
+
+/** Uma hora legível que não está na lista. Serve para responder melhor que "não entendi". */
+export const anyHour: Matcher = (input) => {
+  const at = hourIn(input.text);
+  return at === null ? null : { number: at };
+};
 
 /** Anything the client typed, as long as it is not empty. */
 export const anything: Matcher = (input) => (input.text === "" ? null : { text: input.raw });

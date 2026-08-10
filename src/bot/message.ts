@@ -10,9 +10,13 @@
  * - the WhatsApp adapter can word the same key with WhatsApp's own `*negrito*`
  *   without the engine knowing.
  *
- * A param can itself be a message, which is how a list is built: the state
- * names `escolher_hora` with a list of `item_hora`, and the text module words
- * each item and joins them.
+ * A param can itself be a message, which is how a numbered list is built: the
+ * state names `escolher_servico` with a list of `item_servico`, and the text
+ * module words each item and joins them.
+ *
+ * A param can also be a list of numbers, and then the text module decides how
+ * to arrange it. The free hours go this way: the engine says which minutes are
+ * free and the text module is what groups them in manhã, tarde and noite.
  */
 
 export type MessageKey =
@@ -32,7 +36,7 @@ export type MessageKey =
   | "escolher_dia"
   | "item_dia"
   | "escolher_hora"
-  | "item_hora"
+  | "hora_indisponivel"
   | "sem_horarios"
   | "pedir_nome"
   | "resumo"
@@ -51,7 +55,7 @@ export type MessageKey =
   | "cancelado"
   | "cancelamento_abortado";
 
-export type Param = string | number | Message | Message[];
+export type Param = string | number | number[] | Message | Message[];
 export type Params = Record<string, Param>;
 
 export type Message = { key: MessageKey; params?: Params };
