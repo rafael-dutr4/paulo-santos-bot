@@ -7,7 +7,7 @@
  * esperar até sexta.
  */
 
-import type { Session } from "../bot/session.ts";
+import type { Choice, Session } from "../bot/session.ts";
 import type { Agenda } from "../shop/agenda.ts";
 import { SHOP, serviceById } from "../shop/shop.ts";
 import type { Moment } from "../shop/time.ts";
@@ -38,12 +38,26 @@ export function showSession(session: Session, now: Moment): void {
     {
       nome: session.name ?? null,
       rascunho: session.draft,
-      ofertas: session.choices,
+      ofertas: session.choices.map(resumo),
       erros_seguidos: session.misses,
     },
     null,
     2,
   );
+}
+
+/** As ofertas em uma linha cada: são até trinta e quatro, e o painel é estreito. */
+function resumo(choice: Choice): string {
+  switch (choice.kind) {
+    case "service":
+      return choice.id;
+    case "day":
+      return choice.day;
+    case "slot":
+      return hhmm(choice.start);
+    case "appointment":
+      return choice.id;
+  }
 }
 
 export function showAgenda(agenda: Agenda): void {
