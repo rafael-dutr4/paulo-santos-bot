@@ -177,6 +177,9 @@ export const PTBR: Record<MessageKey, Template> = {
 
   hora_indisponivel: () => "Esse horário não está livre 😕 Escolhe um destes:",
 
+  aproximei: (w) =>
+    `Não tenho ${hora(num(w, "pedido"))}, o mais perto livre é ${hora(num(w, "dado"))} 👇`,
+
   sem_horarios: () =>
     "Poxa, não tenho horário livre para esse serviço nos próximos dias 😕 Manda uma mensagem que a gente dá um jeito.",
 

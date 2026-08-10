@@ -29,6 +29,7 @@ import {
   name as aName,
   no,
   offeredHour,
+  nearestHour,
   option,
   yes,
 } from "./match.ts";
@@ -207,8 +208,26 @@ const escolherHora: State = {
       go: (session) => (session.name ? "confirmar" : "pedir_nome"),
       exits: ["confirmar", "pedir_nome"],
     },
+    {
+      // Pediu uma hora que a grade não tem (14:40) e existe vizinha perto.
+      match: nearestHour,
+      act: (session, match) => ({
+        session:
+          match.choice?.kind === "slot"
+            ? {
+                ...session,
+                draft: {
+                  ...session.draft,
+                  start: match.choice.start,
+                  ...(match.number === undefined ? {} : { asked: match.number }),
+                },
+              }
+            : session,
+      }),
+      go: "aproximado",
+    },
     // Uma hora que dá para ler mas não está livre merece resposta melhor do que
-    // "não entendi", e a ordem das transições é o que separa as duas.
+    // "não entendi", e a ordem das transições é o que separa as três.
     { match: anyHour, go: "hora_indisponivel" },
   ],
 };
@@ -448,6 +467,18 @@ export const FLOW: Flow = {
     hora_indisponivel: {
       enter: says(msg("hora_indisponivel")),
       goto: "escolher_hora",
+    },
+    // Avisa que aproximou e segue para a confirmação, onde a hora aparece
+    // escrita de novo: o cliente ainda pode dizer não.
+    aproximado: {
+      enter: (session) => ({
+        session,
+        messages: [
+          msg("aproximei", { pedido: session.draft.asked ?? 0, dado: session.draft.start ?? 0 }),
+        ],
+        go: session.name ? "confirmar" : "pedir_nome",
+      }),
+      exits: ["confirmar", "pedir_nome"],
     },
     sem_horarios: { enter: says(msg("sem_horarios")), goto: "menu" },
     pedir_nome: pedirNome,

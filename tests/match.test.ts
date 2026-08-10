@@ -5,6 +5,7 @@ import {
   anyHour,
   anything,
   choice,
+  nearestHour,
   offeredHour,
   input,
   keyword,
@@ -80,6 +81,35 @@ test("a typed hour is still checked against what was offered", () => {
   assert.equal(match(offeredHour, "07:00", offered), null);
   assert.equal(match(anyHour, "07:00", offered)?.number, 420);
   assert.equal(match(anyHour, "amanhã", offered), null);
+});
+
+test("the nearest free hour rescues a time the grid does not have", () => {
+  const offered: Session = {
+    ...session,
+    choices: [
+      { kind: "slot", start: 870 }, // 14:30
+      { kind: "slot", start: 885 }, // 14:45
+    ],
+  };
+  // 14:40 não existe numa grade de quinze em quinze, e 14:45 está a cinco minutos.
+  assert.deepEqual(match(nearestHour, "14 e 40", offered)?.choice, { kind: "slot", start: 885 });
+  assert.equal(match(nearestHour, "14 e 40", offered)?.number, 880, "o pedido original é guardado");
+
+  // Longe demais para chamar de "o mais perto que eu tenho".
+  assert.equal(match(nearestHour, "09:00", offered), null);
+  assert.equal(match(nearestHour, "Rafa", offered), null);
+});
+
+test("an option is not an hour, and an hour is not an option", () => {
+  const offered: Session = {
+    ...session,
+    choices: Array.from({ length: 20 }, (_, i) => ({ kind: "slot", start: 540 + i * 15 }) as const),
+  };
+  // "14 e 40" começa com 14, que também é o número de uma linha da lista.
+  assert.equal(match(choice("slot"), "14 e 40", offered), null);
+  assert.equal(match(choice("slot"), "8 da noite", offered), null);
+  // Um número solto continua sendo a linha da lista.
+  assert.deepEqual(match(choice("slot"), "14", offered)?.choice, { kind: "slot", start: 735 });
 });
 
 test("a keyword matches whole words only", () => {

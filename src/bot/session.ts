@@ -34,6 +34,8 @@ export type Draft = {
   serviceId?: ServiceId;
   day?: Day;
   start?: Minutes;
+  /** A hora que o cliente pediu, quando o bot ofereceu a vizinha no lugar. */
+  asked?: Minutes;
   /** Set while remarcando: the appointment being replaced. */
   replacing?: string;
 };

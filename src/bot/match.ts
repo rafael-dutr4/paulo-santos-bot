@@ -8,7 +8,7 @@
  */
 
 import type { Minutes } from "../shop/time.ts";
-import { parseHhmm } from "../shop/time.ts";
+import { lerHora, pareceHora } from "../text/horas.ts";
 import type { Choice, Ctx, Session } from "./session.ts";
 
 export type Input = {
@@ -61,6 +61,7 @@ export function input(raw: string): Input {
  * `09:00` é nove da manhã, e sem esse detalhe `09:00` viraria a opção 9.
  */
 export function leadingNumber(text: string): number | null {
+  if (pareceHora(text)) return null;
   const match = /^(?:opcao\s*|op\s*)?(\d{1,2})(?![:h\d])\b/.exec(text);
   return match ? Number(match[1]) : null;
 }
@@ -114,29 +115,61 @@ export const yes: Matcher = keyword(
 
 export const no: Matcher = keyword("nao", "n", "negativo", "cancela", "melhor nao");
 
-/** "às 14:30", "pra 14h", "quero 14:30" e "14:30" são a mesma coisa. */
-function hourIn(text: string): Minutes | null {
-  return parseHhmm(text.replace(/^(as|pra|para|quero|pode ser|marca)\s+/, ""));
-}
+/** A distância que ainda vale como "o mais perto que eu tenho". */
+const PERTO = 30;
+
+const slots = (session: Session): Minutes[] =>
+  session.choices.flatMap((c) => (c.kind === "slot" ? [c.start] : []));
 
 /**
- * Um horário digitado, resolvido contra o que foi oferecido.
+ * Uma hora escrita em português, resolvida contra o que foi oferecido.
  *
- * A lista de horários não é numerada (são muitos), então o cliente responde com
- * a hora. Mesmo assim a resposta continua sendo conferida contra `choices`, que
- * é o que garante que ninguém marca um horário que o bot não ofereceu.
+ * `lerHora` devolve as candidatas ("duas e meia" são 14:30 e 02:30) e a escolha
+ * acontece aqui, onde a lista de horários livres existe: vale a primeira
+ * candidata que está livre. É o que faz "duas e meia" cair na tarde sem
+ * ninguém escrever uma regra sobre barbearia dentro do leitor de horas.
+ *
+ * Conferir contra `choices` continua sendo a garantia do fluxo: por mais esperta
+ * que fique a leitura, ninguém marca um horário que o bot não ofereceu.
  */
 export const offeredHour: Matcher = (input, session) => {
-  const at = hourIn(input.text);
-  if (at === null) return null;
-  const chosen = session.choices.find((c) => c.kind === "slot" && c.start === at);
-  return chosen ? { number: at, choice: chosen } : null;
+  const livres = slots(session);
+  for (const at of lerHora(input.text)) {
+    if (livres.includes(at)) {
+      return { number: at, choice: { kind: "slot", start: at } };
+    }
+  }
+  return null;
 };
 
-/** Uma hora legível que não está na lista. Serve para responder melhor que "não entendi". */
+/**
+ * Uma hora que ninguém tem, mas que tem vizinha.
+ *
+ * "14:40" não existe numa grade de quinze em quinze, e mandar a lista inteira de
+ * volta para o cliente achar sozinho o 14:45 é grosseria. Aqui a candidata mais
+ * próxima de qualquer interpretação vence, desde que esteja a menos de meia
+ * hora do que foi pedido, e o fluxo avisa que aproximou antes de confirmar.
+ */
+export const nearestHour: Matcher = (input, session) => {
+  const livres = slots(session);
+  if (livres.length === 0) return null;
+
+  let melhor: { pedido: Minutes; perto: Minutes; distancia: number } | null = null;
+  for (const pedido of lerHora(input.text)) {
+    for (const perto of livres) {
+      const distancia = Math.abs(perto - pedido);
+      if (distancia > PERTO) continue;
+      if (!melhor || distancia < melhor.distancia) melhor = { pedido, perto, distancia };
+    }
+  }
+  if (!melhor) return null;
+  return { number: melhor.pedido, choice: { kind: "slot", start: melhor.perto } };
+};
+
+/** Uma hora legível que não está livre nem perto. Responde melhor que "não entendi". */
 export const anyHour: Matcher = (input) => {
-  const at = hourIn(input.text);
-  return at === null ? null : { number: at };
+  const [at] = lerHora(input.text);
+  return at === undefined ? null : { number: at };
 };
 
 /** Anything the client typed, as long as it is not empty. */
@@ -147,6 +180,6 @@ export const name: Matcher = (input) => {
   if (input.text === "" || input.raw.length > 60) return null;
   if (leadingNumber(input.text) !== null) return null;
   // Quem responde "14:15" aqui errou a pergunta, não se chama 14:15.
-  if (hourIn(input.text) !== null) return null;
+  if (/^[\d\s:h]+$/.test(input.text)) return null;
   return { text: input.raw };
 };

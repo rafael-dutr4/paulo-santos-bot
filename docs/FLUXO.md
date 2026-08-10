@@ -51,7 +51,25 @@ Opções do menu:
 | `escolher_servico` | Lista os serviços com preço e duração. Guarda a lista nas ofertas da sessão. Vai para `escolher_dia`, ou `sem_horarios` se não houver dia livre. |
 | `escolher_dia` | Lista os próximos dias que têm horário livre para o serviço escolhido. Dia fechado e dia lotado não aparecem. |
 | `escolher_hora` | Todos os horários livres do dia numa mensagem só, numerados de ponta a ponta, com manhã e tarde como título para dar respiro. Aceita o número da lista e também a hora digitada (`14:30`, `14h30`, `às 14h30`), sempre conferida contra o que foi oferecido. |
-| `hora_indisponivel` | A hora dá para ler mas não está livre. Diz isso e mostra a lista de novo, em vez de responder "não entendi". |
+| `aproximado` | A hora pedida não existe na grade (`14 e 40`) mas tem vizinha livre a menos de meia hora. Avisa qual é e segue para a confirmação, que repete a hora escolhida. |
+| `hora_indisponivel` | A hora dá para ler mas não está livre nem tem vizinha perto. Diz isso e mostra a lista de novo, em vez de responder "não entendi". |
+
+Como o cliente pode dizer a hora:
+
+| ele escreve | o bot entende |
+| --- | --- |
+| `3` | a terceira linha da lista |
+| `14:30`, `14h30`, `18h` | o relógio de 24 horas |
+| `duas e meia`, `três e quinze`, `nove e quarenta` | a hora falada |
+| `quatro e um quarto`, `quinze pras duas` | as frações da hora |
+| `meio dia`, `meia noite` | as duas horas com nome |
+| `duas da tarde`, `oito da noite`, `nove da manhã` | o período dito desempata |
+| `pode ser 14:30?`, `quero marcar duas e meia` | o pedido embrulhado em conversa |
+
+Uma hora de uma a onze cabe duas vezes no dia, e o leitor não escolhe: ele
+devolve as duas leituras (`duas e meia` são 14:30 e 02:30) e vale a primeira que
+está livre. É por isso que a tarde ganha sem ninguém escrever uma regra sobre
+barbearia dentro do leitor de horas.
 | `pedir_nome` | Só aparece para quem o bot ainda não conhece. |
 | `confirmar` | Repete serviço, dia, hora e valor, e pergunta. |
 | `agendado` | Confirma e **segue** para o `menu`. |

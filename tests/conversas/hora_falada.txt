@@ -1,0 +1,53 @@
+# O cliente não responde número nem hh:mm, ele fala a hora.
+#
+# "duas e meia" tanto pode ser 02:30 quanto 14:30, e quem desempata não é o
+# leitor de horas: é a lista de horários livres. Vale a primeira leitura que
+# está de fato livre, então a tarde ganha sozinha.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+
+> oi
+< saudacao
+< menu
+
+> 1
+< escolher_servico
+
+> 1
+< escolher_dia
+
+> 1
+< escolher_hora
+
+# 14:40 não existe numa grade de quinze em quinze, e o bot avisa antes de somir
+# com o pedido: ele oferece a vizinha e a confirmação repete a hora escolhida.
+> pode ser 14 e 40?
+< aproximei
+< pedir_nome
+
+> Rafa
+< resumo
+< confirmar
+
+> não
+< nao_agendado
+< menu
+
+> 1
+< escolher_servico
+
+> 1
+< escolher_dia
+
+> 1
+< escolher_hora
+
+> duas e meia
+< resumo
+< confirmar
+
+> isso mesmo
+< agendado
+< menu
+
+= 2026-08-11 14:30 corte

@@ -14,6 +14,7 @@ This project exists as much for the learning as for the product. Explain the mec
 - **The engine is pure.** `reply()` takes the clock and the agenda as data and returns the next session, the messages and the effects. No `Date.now()` and no `Math.random()` anywhere in `src/bot/`, `src/shop/` or `src/text/`.
 - **The engine describes changes, it does not perform them.** Booking and cancelling come out as `Effect[]` and the shell applies them. This is what lets the simulator keep the agenda in `localStorage` and a future adapter keep it in a database, over identical code.
 - **The engine names a message, it does not word one.** It returns a `Message` (a key and its params). `src/text/ptbr.ts` is the only file that holds a sentence a client reads. Tests assert on keys.
+- **O português vive em `src/text/`, dos dois lados.** `ptbr.ts` escreve e `horas.ts` lê. Um leitor devolve todas as leituras possíveis, em ordem de probabilidade, e quem escolhe é o fluxo, que sabe o que está livre. Nenhum arquivo de `src/text/` sabe o que é barbearia.
 - **The flow is data.** The state table in `src/bot/flow.ts` is an object, and `engine.ts` is an interpreter that knows nothing about barbershops. Anything specific to the barbershop goes in the table or in `src/shop/`, never in the interpreter.
 - **Time is wall clock time, not `Date`.** A day is `"2026-08-11"` and an hour is minutes since midnight. `Date` appears once, in `src/sim/clock.ts`, to read the browser clock.
 - **The DOM lives in `src/sim/` and nowhere else.** Everything above it runs in Node with no shims.
@@ -33,9 +34,10 @@ src/shop/     the domain, pure
   time.ts       Day, Minutes, Moment, days-from-civil arithmetic
   slots.ts      freeSlots(), the interval subtraction
   agenda.ts     Appointment, and applying an Effect to an agenda
-src/text/
+src/text/     a língua do projeto: um lado escreve, o outro lê
   ptbr.ts       every sentence the client reads
   say.ts        Message -> string
+  horas.ts      lê a hora em português ("duas e meia" -> 14:30 ou 02:30)
 src/sim/      the only place that touches the DOM
   main.ts       wiring
   chat.ts       the WhatsApp looking conversation

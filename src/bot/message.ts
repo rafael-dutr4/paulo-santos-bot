@@ -36,6 +36,7 @@ export type MessageKey =
   | "cabecalho_periodo"
   | "item_hora"
   | "hora_indisponivel"
+  | "aproximei"
   | "sem_horarios"
   | "pedir_nome"
   | "resumo"
