@@ -52,23 +52,23 @@ test("a closed day has no hours at all", () => {
 test("an empty day is the whole grid, and the lunch break is just the gap", () => {
   const hours = times([]);
   assert.equal(hours[0], "09:00");
-  assert.equal(hours.at(-1), "18:30");
-  assert.ok(hours.includes("11:30"));
-  assert.ok(!hours.includes("11:45"), "um corte às 11:45 passaria do fechamento das 12:00");
+  assert.equal(hours.at(-1), "18:00");
+  assert.ok(hours.includes("11:00"));
+  assert.ok(!hours.includes("11:15"), "um corte às 11:15 passaria do fechamento das 12:00");
   assert.ok(!hours.includes("13:00"), "o almoço vai até as 14:00");
   assert.ok(hours.includes("14:00"));
 });
 
 test("a longer service loses the slots that do not fit before the break", () => {
   const hours = times([], TUESDAY, corteBarba);
-  assert.ok(hours.includes("11:00"));
-  assert.ok(!hours.includes("11:15"), "corte + barba às 11:15 invadiria o almoço");
+  assert.ok(hours.includes("10:00"));
+  assert.ok(!hours.includes("10:15"), "corte + barba às 10:15 invadiria o almoço");
 });
 
 test("an appointment removes every slot that touches it", () => {
   const hours = times([booked(600, 30)]); // 10:00 às 10:30
-  assert.ok(hours.includes("09:30"), "termina exatamente quando o outro começa");
-  assert.ok(!hours.includes("09:45"));
+  assert.ok(hours.includes("09:00"), "termina exatamente quando o outro começa");
+  assert.ok(!hours.includes("09:15"));
   assert.ok(!hours.includes("10:00"));
   assert.ok(!hours.includes("10:15"));
   assert.ok(hours.includes("10:30"));

@@ -65,10 +65,10 @@ export const SHOP: Shop = {
   maps: "https://maps.google.com/?q=Rua+das+Palmeiras+240",
   phone: "5511999990000",
   services: [
-    { id: "corte", name: "Corte", minutes: 30, price: 4500 },
-    { id: "barba", name: "Barba", minutes: 30, price: 3500 },
-    { id: "corte_barba", name: "Corte + barba", minutes: 60, price: 7000 },
-    { id: "pezinho", name: "Pezinho", minutes: 15, price: 2000 },
+    { id: "corte", name: "Corte", minutes: 60, price: 4500 },
+    { id: "barba", name: "Barba", minutes: 60, price: 3500 },
+    { id: "corte_barba", name: "Corte + barba", minutes: 120, price: 7000 },
+    { id: "pezinho", name: "Pezinho", minutes: 30, price: 2000 },
   ],
   hours: {
     0: [], // domingo, fechado
