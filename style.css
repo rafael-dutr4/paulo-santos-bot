@@ -104,14 +104,26 @@ main {
   );
 }
 
+/*
+ * A hora fica no fluxo, embaixo do texto, e não posicionada por cima dele.
+ * Com `position: absolute` a largura do balão vinha só do texto, então uma
+ * mensagem curta ("2") ficava mais estreita que o próprio horário e as duas
+ * coisas se sobrepunham.
+ */
 .bubble {
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   max-width: 78%;
-  padding: 6px 10px 18px;
+  padding: 6px 10px;
   border-radius: 8px;
   white-space: pre-wrap;
   word-break: break-word;
   box-shadow: 0 1px 1px rgb(0 0 0 / 12%);
+}
+
+.bubble .text {
+  align-self: stretch;
 }
 
 .bubble.cliente {
@@ -127,17 +139,16 @@ main {
 }
 
 .bubble .time {
-  position: absolute;
-  right: 8px;
-  bottom: 4px;
+  margin-top: 1px;
   font-size: 11px;
+  line-height: 1;
   color: var(--fraco);
 }
 
 .bubble.typing {
-  display: flex;
+  flex-direction: row;
   gap: 4px;
-  padding: 12px 12px;
+  padding: 12px;
   width: 52px;
 }
 
