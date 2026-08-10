@@ -149,7 +149,6 @@ export const PTBR: Record<MessageKey, Template> = {
   escolher_hora: (w) =>
     [`Horários livres em ${dia(str(w, "dia"))}:`, "", str(w, "itens")].join("\n"),
   item_hora: (w) => `${num(w, "n")} - ${hora(num(w, "hora"))}`,
-  item_mais: (w) => `${num(w, "n")} - Ver mais horários`,
 
   sem_horarios: () =>
     "Poxa, não tenho horário livre para esse serviço nos próximos dias 😕 Manda uma mensagem que a gente dá um jeito.",

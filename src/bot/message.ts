@@ -33,7 +33,6 @@ export type MessageKey =
   | "item_dia"
   | "escolher_hora"
   | "item_hora"
-  | "item_mais"
   | "sem_horarios"
   | "pedir_nome"
   | "resumo"

@@ -25,8 +25,6 @@ import { msg } from "./message.ts";
 
 /** How many days the day menu offers before the client has to say a date. */
 const DAYS_SHOWN = 6;
-/** How many hours fit in one message before it needs a "ver mais" line. */
-const PAGE = 8;
 
 // --- reading the draft -----------------------------------------------------
 
@@ -147,7 +145,7 @@ const escolherDia: State = {
       act: (session, match) => ({
         session:
           match.choice?.kind === "day"
-            ? { ...session, draft: { ...session.draft, day: match.choice.day, page: 0 } }
+            ? { ...session, draft: { ...session.draft, day: match.choice.day } }
             : session,
       }),
       go: "escolher_hora",
@@ -164,21 +162,13 @@ const escolherHora: State = {
     const hours = freeSlots(ctx.shop, agendaFor(session, ctx), day, service, ctx.now);
     if (hours.length === 0) return { session, messages: [], go: "escolher_dia" };
 
-    // The page wraps instead of ending, so "ver mais horários" always answers
-    // with hours and never with a dead end.
-    const pages = Math.ceil(hours.length / PAGE);
-    const page = (session.draft.page ?? 0) % pages;
-    const shown = hours.slice(page * PAGE, page * PAGE + PAGE);
-
-    const choices: Choice[] = shown.map((start) => ({ kind: "slot", start }));
-    const itens = shown.map((start, i) => msg("item_hora", { n: i + 1, hora: start }));
-    if (pages > 1) {
-      choices.push({ kind: "more" });
-      itens.push(msg("item_mais", { n: shown.length + 1 }));
-    }
+    // Todos os horários de uma vez. Paginar economiza rolagem e custa uma
+    // pergunta a mais, e o cliente que rola a lista já sabe o que quer.
+    const choices: Choice[] = hours.map((start) => ({ kind: "slot", start }));
+    const itens = hours.map((start, i) => msg("item_hora", { n: i + 1, hora: start }));
 
     return {
-      session: { ...session, choices, draft: { ...session.draft, page } },
+      session: { ...session, choices },
       messages: [msg("escolher_hora", { dia: day, itens })],
     };
   },
@@ -194,13 +184,6 @@ const escolherHora: State = {
       }),
       go: (session) => (session.name ? "confirmar" : "pedir_nome"),
       exits: ["confirmar", "pedir_nome"],
-    },
-    {
-      match: choice("more"),
-      act: (session) => ({
-        session: { ...session, draft: { ...session.draft, page: (session.draft.page ?? 0) + 1 } },
-      }),
-      go: "escolher_hora",
     },
   ],
 };
@@ -277,10 +260,10 @@ const confirmar: State = {
 };
 
 const slotOcupado: State = {
-  // Back to the hours of the same day, from the first page, because the list
-  // the client was reading is now wrong.
+  // Back to the hours of the same day, because the list the client was reading
+  // is now wrong.
   enter: (session) => ({
-    session: { ...session, draft: { ...session.draft, page: 0 } },
+    session,
     messages: [msg("slot_ocupado")],
     go: "escolher_hora",
   }),

@@ -27,8 +27,7 @@ export type Choice =
   | { kind: "service"; id: ServiceId }
   | { kind: "day"; day: Day }
   | { kind: "slot"; start: Minutes }
-  | { kind: "appointment"; id: string }
-  | { kind: "more" };
+  | { kind: "appointment"; id: string };
 
 /** What is being assembled during a booking. */
 export type Draft = {
@@ -37,8 +36,6 @@ export type Draft = {
   start?: Minutes;
   /** Set while remarcando: the appointment being replaced. */
   replacing?: string;
-  /** Which page of hours is on screen. */
-  page?: number;
 };
 
 export type Session = {

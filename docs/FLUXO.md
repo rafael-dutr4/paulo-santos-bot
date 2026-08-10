@@ -50,11 +50,11 @@ Opções do menu:
 | --- | --- |
 | `escolher_servico` | Lista os serviços com preço e duração. Guarda a lista nas ofertas da sessão. Vai para `escolher_dia`, ou `sem_horarios` se não houver dia livre. |
 | `escolher_dia` | Lista os próximos dias que têm horário livre para o serviço escolhido. Dia fechado e dia lotado não aparecem. |
-| `escolher_hora` | Lista até oito horários do dia. Se houver mais, a última opção é "ver mais horários", que avança a página e volta ao começo quando acaba. |
+| `escolher_hora` | Lista todos os horários livres do dia, de uma vez. O tamanho da lista se ajusta pelo `slotStep` da barbearia, não por paginação. |
 | `pedir_nome` | Só aparece para quem o bot ainda não conhece. |
 | `confirmar` | Repete serviço, dia, hora e valor, e pergunta. |
 | `agendado` | Confirma e **segue** para o `menu`. |
-| `slot_ocupado` | O horário foi ocupado entre a oferta e o "sim". Volta para `escolher_hora`, na primeira página. |
+| `slot_ocupado` | O horário foi ocupado entre a oferta e o "sim". Volta para `escolher_hora` com a lista recalculada. |
 | `nao_agendado` | O cliente disse não. Nada foi marcado. |
 | `sem_horarios` | Não há horário livre no horizonte da agenda. |
 

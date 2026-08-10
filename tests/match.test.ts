@@ -46,12 +46,16 @@ test("an option only claims its own number", () => {
 test("a number means nothing without the list that was offered", () => {
   const offered: Session = {
     ...session,
-    choices: [{ kind: "slot", start: 540 }, { kind: "slot", start: 570 }, { kind: "more" }],
+    choices: [
+      { kind: "slot", start: 540 },
+      { kind: "slot", start: 570 },
+      { kind: "day", day: "2026-08-11" },
+    ],
   };
   assert.deepEqual(match(choice("slot"), "2", offered)?.choice, { kind: "slot", start: 570 });
   // The same "3" belongs to another transition, because it is another kind.
   assert.equal(match(choice("slot"), "3", offered), null);
-  assert.deepEqual(match(choice("more"), "3", offered)?.choice, { kind: "more" });
+  assert.deepEqual(match(choice("day"), "3", offered)?.choice, { kind: "day", day: "2026-08-11" });
   // Out of the list, and out of an empty list.
   assert.equal(match(choice("slot"), "9", offered), null);
   assert.equal(match(choice("slot"), "1"), null);
