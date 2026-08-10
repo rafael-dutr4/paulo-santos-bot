@@ -50,7 +50,7 @@ Opções do menu:
 | --- | --- |
 | `escolher_servico` | Lista os serviços com preço e duração. Guarda a lista nas ofertas da sessão. Vai para `escolher_dia`, ou `sem_horarios` se não houver dia livre. |
 | `escolher_dia` | Lista os próximos dias que têm horário livre para o serviço escolhido. Dia fechado e dia lotado não aparecem. |
-| `escolher_periodo` | Pergunta manhã, tarde ou noite, mostrando a faixa de cada um. Só aparecem os períodos que têm horário livre, e um período sozinho não vira pergunta: o cliente vai direto para as horas. |
+| `escolher_periodo` | Pergunta manhã ou tarde, mostrando a faixa de cada um. Só aparecem os períodos que têm horário livre, e um período sozinho não vira pergunta: o cliente vai direto para as horas. |
 | `escolher_hora` | Os horários daquele período, numerados, com "ver outro período" na última linha. Aceita o número da lista e também a hora digitada (`14:30`, `14h30`, `às 14h30`), sempre conferida contra o que foi oferecido. |
 | `hora_indisponivel` | A hora dá para ler mas não está livre. Diz isso e mostra a lista de novo, em vez de responder "não entendi". |
 | `pedir_nome` | Só aparece para quem o bot ainda não conhece. |

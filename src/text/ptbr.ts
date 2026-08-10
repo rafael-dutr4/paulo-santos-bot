@@ -30,7 +30,6 @@ export type Template = (words: Words) => string;
 const PERIODOS: Record<string, { nome: string; emoji: string }> = {
   manha: { nome: "Manhã", emoji: "🌅" },
   tarde: { nome: "Tarde", emoji: "☀️" },
-  noite: { nome: "Noite", emoji: "🌙" },
 };
 
 const periodo = (id: string): { nome: string; emoji: string } =>

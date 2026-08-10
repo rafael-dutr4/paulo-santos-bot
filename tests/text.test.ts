@@ -44,13 +44,13 @@ test("a period says its name and the range it covers", () => {
       dia: "2026-08-11",
       itens: [
         msg("item_periodo", { n: 1, periodo: "manha", de: 540, ate: 690, quantos: 11 }),
-        msg("item_periodo", { n: 2, periodo: "noite", de: 960, ate: 1110, quantos: 11 }),
+        msg("item_periodo", { n: 2, periodo: "tarde", de: 840, ate: 1110, quantos: 19 }),
       ],
     }),
   );
   assert.ok(text.includes("Para terça-feira, 11/08"), text);
   assert.ok(text.includes("1 - 🌅 Manhã (09:00 às 11:30)"), text);
-  assert.ok(text.includes("2 - 🌙 Noite (16:00 às 18:30)"), text);
+  assert.ok(text.includes("2 - ☀️ Tarde (14:00 às 18:30)"), text);
 });
 
 test("the hours of a period are numbered", () => {
@@ -68,8 +68,8 @@ test("the hours of a period are numbered", () => {
 
 test("the opening hours group the days that are the same", () => {
   const text = say(msg("horarios"));
-  assert.ok(text.includes("terça-feira a quinta-feira: 09:00 às 12:00 e 13:00 às 19:00"), text);
-  assert.ok(text.includes("sexta-feira: 09:00 às 12:00 e 13:00 às 20:00"), text);
+  assert.ok(text.includes("terça-feira a quinta-feira: 09:00 às 12:00 e 14:00 às 19:00"), text);
+  assert.ok(text.includes("sexta-feira: 09:00 às 12:00 e 14:00 às 20:00"), text);
   assert.ok(text.includes("sábado: 08:00 às 17:00"), text);
   assert.ok(text.includes("Fechado: segunda-feira e domingo"), text);
 });

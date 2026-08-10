@@ -29,6 +29,13 @@ function times(agenda: Agenda, day = TUESDAY, service = corte, now = MONDAY): st
   return freeSlots(SHOP, agenda, day, service, now).map(hhmm);
 }
 
+/** Uma terça sem um minuto livre: 09:00 às 12:00 e 14:00 às 19:00, de meia em meia. */
+function fullTuesday(day = TUESDAY): Appointment[] {
+  const manha = Array.from({ length: 6 }, (_, i) => booked(540 + i * 30, 30, day));
+  const tarde = Array.from({ length: 10 }, (_, i) => booked(840 + i * 30, 30, day));
+  return [...manha, ...tarde];
+}
+
 test("two intervals overlap when each starts before the other ends", () => {
   assert.ok(overlaps({ start: 540, end: 570 }, { start: 555, end: 585 }));
   assert.ok(overlaps({ start: 540, end: 600 }, { start: 550, end: 560 }));
@@ -48,7 +55,8 @@ test("an empty day is the whole grid, and the lunch break is just the gap", () =
   assert.equal(hours.at(-1), "18:30");
   assert.ok(hours.includes("11:30"));
   assert.ok(!hours.includes("11:45"), "um corte às 11:45 passaria do fechamento das 12:00");
-  assert.ok(hours.includes("13:00"));
+  assert.ok(!hours.includes("13:00"), "o almoço vai até as 14:00");
+  assert.ok(hours.includes("14:00"));
 });
 
 test("a longer service loses the slots that do not fit before the break", () => {
@@ -73,17 +81,12 @@ test("today only offers what still has the minimum notice", () => {
 });
 
 test("a full day offers nothing", () => {
-  const day = Array.from({ length: 12 }, (_, i) => booked(540 + i * 30, 30));
-  const afternoon = Array.from({ length: 12 }, (_, i) => booked(780 + i * 30, 30));
-  assert.deepEqual(times([...day, ...afternoon]), []);
+  assert.deepEqual(times(fullTuesday()), []);
 });
 
 test("the day list skips the closed days and the full ones", () => {
   const days = daysWithSlots(SHOP, [], corte, MONDAY, 5);
   assert.deepEqual(days, ["2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15"]);
 
-  const tuesdayFull = Array.from({ length: 24 }, (_, i) =>
-    i < 12 ? booked(540 + i * 30, 30) : booked(780 + (i - 12) * 30, 30),
-  );
-  assert.equal(daysWithSlots(SHOP, tuesdayFull, corte, MONDAY, 5)[0], "2026-08-12");
+  assert.equal(daysWithSlots(SHOP, fullTuesday(), corte, MONDAY, 5)[0], "2026-08-12");
 });
