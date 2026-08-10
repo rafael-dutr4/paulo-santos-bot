@@ -16,7 +16,7 @@ import { appointmentId, byId, upcoming } from "../shop/agenda.ts";
 import type { Service } from "../shop/shop.ts";
 import { serviceById } from "../shop/shop.ts";
 import { byPeriod, daysWithSlots, freeSlots } from "../shop/slots.ts";
-import type { Choice, Ctx, Session } from "./session.ts";
+import type { Choice, Ctx, Session, StateName } from "./session.ts";
 import { clearDraft } from "./session.ts";
 import type { Enter, Flow, Outcome, State } from "./engine.ts";
 import { run, says, silent } from "./engine.ts";
@@ -152,6 +152,7 @@ const escolherDia: State = {
     };
   },
   exits: ["menu", "sem_horarios"],
+  back: "escolher_servico",
   on: [
     {
       match: choice("day"),
@@ -194,6 +195,7 @@ const escolherHora: State = {
     };
   },
   exits: ["menu", "escolher_dia"],
+  back: "escolher_dia",
   on: [
     {
       // O número da lista e a hora digitada levam ao mesmo lugar. Quem lê a
@@ -441,12 +443,26 @@ const confirmarCancelamento: State = {
   ],
 };
 
+/**
+ * Para onde "voltar" pode levar. É a lista que o teste do grafo lê, e um teste
+ * separado cobra que todo `back` da tabela esteja aqui dentro.
+ */
+const BACK_TARGETS = ["menu", "escolher_servico", "escolher_dia"];
+
+function backFrom(session: Session): StateName {
+  return FLOW.states[session.state]?.back ?? "menu";
+}
+
 export const FLOW: Flow = {
   start: "inicio",
   stuck: "humano",
   missLimit: 3,
   global: [
-    { match: keyword("menu", "voltar", "opcoes"), go: "menu" },
+    { match: keyword("menu", "opcoes"), go: "menu" },
+    // "Voltar" é um passo atrás, não o menu. Quem abriu a lista de horas e não
+    // gostou de nenhuma queria trocar o dia, e mandá-lo para o menu apagaria
+    // também o serviço que ele já tinha escolhido.
+    { match: keyword("voltar"), go: backFrom, exits: BACK_TARGETS },
     { match: keyword("sair", "tchau", "encerrar"), go: "despedida" },
   ],
   states: {

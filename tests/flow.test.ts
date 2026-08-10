@@ -20,7 +20,14 @@ function edges(state: State): StateName[] {
   }
   if (state.goto) out.push(state.goto);
   out.push(...(state.exits ?? []));
+  if (state.back) out.push(state.back);
   return out;
+}
+
+/** O que a regra global de "voltar" declara que alcança. */
+function backTargets(): StateName[] {
+  const voltar = FLOW.global.find((t) => typeof t.go === "function" && t.exits);
+  return voltar?.exits ?? [];
 }
 
 test("a transition that decides where to go declares where it can go", () => {
@@ -82,6 +89,24 @@ test("no goto walks in a circle", () => {
       current = FLOW.states[current]!.goto;
     }
   }
+});
+
+test("every step back is a state, and one the voltar rule admits it reaches", () => {
+  const declared = new Set(backTargets());
+  assert.ok(declared.has("menu"), "sem back, voltar cai no menu, então menu tem que estar lá");
+  for (const [name, state] of Object.entries(FLOW.states)) {
+    if (!state.back) continue;
+    assert.ok(FLOW.states[state.back], `${name}: volta para um estado que não existe`);
+    assert.ok(declared.has(state.back), `${name}: volta para ${state.back}, fora dos exits`);
+  }
+});
+
+test("a step back never walks forward", () => {
+  // Voltar de escolher_hora tem que desfazer a escolha do dia, não do serviço:
+  // um passo atrás que pula dois é a mesma perda que mandar tudo para o menu.
+  assert.equal(FLOW.states["escolher_hora"]?.back, "escolher_dia");
+  assert.equal(FLOW.states["escolher_dia"]?.back, "escolher_servico");
+  assert.equal(FLOW.states["escolher_servico"]?.back, undefined);
 });
 
 test("the stuck state is where a lost client ends up", () => {

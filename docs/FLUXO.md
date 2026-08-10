@@ -16,8 +16,18 @@ isso que ninguém fica preso dentro de um agendamento pela metade.
 
 | resposta | vai para |
 | --- | --- |
-| `menu`, `voltar`, `opcoes` | `menu` |
+| `menu`, `opcoes` | `menu` |
+| `voltar` | o `back` do estado atual, ou `menu` se ele não tiver um |
 | `sair`, `tchau`, `encerrar` | `despedida` |
+
+`voltar` é um passo atrás, não o menu. Quem abriu as horas de um dia e não
+gostou de nenhuma queria trocar o dia, e o menu apagaria também o serviço que
+ele já tinha escolhido:
+
+| estado | volta para |
+| --- | --- |
+| `escolher_hora` | `escolher_dia` |
+| `escolher_dia` | `escolher_servico` |
 
 Três respostas seguidas que o bot não entende levam a `humano`. O contador
 zera assim que uma resposta é entendida.

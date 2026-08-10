@@ -156,7 +156,13 @@ export const PTBR: Record<MessageKey, Template> = {
     `${num(w, "n")} - ${str(w, "nome")} (${num(w, "minutos")} min, ${brl(num(w, "preco"))})`,
 
   escolher_dia: (w) =>
-    [`${str(w, "servico")}. Para quando?`, "", str(w, "itens")].join("\n"),
+    [
+      `${str(w, "servico")}. Para quando?`,
+      "",
+      str(w, "itens"),
+      "",
+      "Se quiser trocar o serviço, é só dizer voltar.",
+    ].join("\n"),
   item_dia: (w) => `${num(w, "n")} - ${dia(str(w, "dia"))}`,
 
   escolher_hora: (w) =>
@@ -165,6 +171,7 @@ export const PTBR: Record<MessageKey, Template> = {
       str(w, "itens"),
       "",
       "Responde com o número ou com o horário.",
+      "Se nenhum servir, diz voltar que eu mostro os outros dias.",
     ].join("\n"),
 
   // O `\n` na frente é o que separa um período do outro. Os itens são juntados

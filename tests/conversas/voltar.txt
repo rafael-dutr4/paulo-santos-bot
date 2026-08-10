@@ -1,0 +1,44 @@
+# Abriu a lista de horas de um dia e não gostou de nenhuma. "Voltar" devolve a
+# lista de dias com o serviço ainda escolhido, e um segundo "voltar" devolve a
+# dos serviços. Depois disso o agendamento fecha normal, que é o que prova que
+# o passo atrás não deixou meio rascunho para trás.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+
+> oi
+< saudacao
+< menu
+
+> 1
+< escolher_servico
+
+> 1
+< escolher_dia
+
+> 2
+< escolher_hora
+
+> voltar
+< escolher_dia
+
+> voltar
+< escolher_servico
+
+> 4
+< escolher_dia
+
+> 1
+< escolher_hora
+
+> 09:00
+< pedir_nome
+
+> Rafa
+< resumo
+< confirmar
+
+> sim
+< agendado
+< menu
+
+= 2026-08-11 09:00 pezinho

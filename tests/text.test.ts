@@ -69,6 +69,7 @@ test("the hours are one message, numbered straight through the periods", () => {
       "3 - 14:00",
       "",
       "Responde com o número ou com o horário.",
+      "Se nenhum servir, diz voltar que eu mostro os outros dias.",
     ].join("\n"),
   );
 });

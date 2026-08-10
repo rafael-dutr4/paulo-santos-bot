@@ -67,6 +67,12 @@ export type State = {
   goto?: StateName;
   /** Where `enter` may redirect to, declared for the graph test. */
   exits?: StateName[];
+  /**
+   * One step back, for a client who changed their mind about the answer he
+   * already gave. A state without one has nothing behind it, and "voltar" from
+   * there means the menu.
+   */
+  back?: StateName;
   /** What it says when nothing matched. */
   fallback?: Message;
 };
