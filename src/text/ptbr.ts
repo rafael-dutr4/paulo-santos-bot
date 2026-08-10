@@ -159,25 +159,21 @@ export const PTBR: Record<MessageKey, Template> = {
     [`${str(w, "servico")}, boa escolha. Para quando?`, "", str(w, "itens")].join("\n"),
   item_dia: (w) => `${num(w, "n")} - ${dia(str(w, "dia"))}`,
 
-  escolher_periodo: (w) =>
-    [`Para ${dia(str(w, "dia"))}. Qual período?`, "", str(w, "itens")].join("\n"),
-  item_periodo: (w) => {
-    const { nome, emoji } = periodo(str(w, "periodo"));
-    return `${num(w, "n")} - ${emoji} ${nome} (${hora(num(w, "de"))} às ${hora(num(w, "ate"))})`;
-  },
-
   escolher_hora: (w) =>
     [
-      `Horários livres na ${periodo(str(w, "periodo")).nome.toLowerCase()} de ${dia(
-        str(w, "dia"),
-      )}:`,
-      "",
+      `Horários livres em ${dia(str(w, "dia"))}:`,
       str(w, "itens"),
       "",
       "Responde com o número ou com o horário.",
     ].join("\n"),
+
+  // O `\n` na frente é o que separa um período do outro. Os itens são juntados
+  // por quebra de linha, então o título abre a linha em branco do bloco.
+  cabecalho_periodo: (w) => {
+    const { nome, emoji } = periodo(str(w, "periodo"));
+    return `\n${emoji} ${nome}`;
+  },
   item_hora: (w) => `${num(w, "n")} - ${hora(num(w, "hora"))}`,
-  item_outro_periodo: (w) => `${num(w, "n")} - Ver outro período`,
 
   hora_indisponivel: () => "Esse horário não está livre 😕 Escolhe um destes:",
 

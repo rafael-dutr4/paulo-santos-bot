@@ -13,9 +13,6 @@
 < escolher_dia
 
 > 1
-< escolher_periodo
-
-> 1
 < escolher_hora
 
 # Uma hora que dá para ler mas não está livre não é "não entendi".

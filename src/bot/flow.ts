@@ -32,6 +32,7 @@ import {
   option,
   yes,
 } from "./match.ts";
+import type { Message } from "./message.ts";
 import { msg } from "./message.ts";
 
 /** How many days the day menu offers before the client has to say a date. */
@@ -159,67 +160,6 @@ const escolherDia: State = {
             ? { ...session, draft: { ...session.draft, day: match.choice.day } }
             : session,
       }),
-      go: "escolher_periodo",
-    },
-  ],
-};
-
-/** Os horários livres do dia do rascunho, já separados por período. */
-function periodsOf(session: Session, ctx: Ctx) {
-  const service = draftService(session, ctx);
-  const day = session.draft.day;
-  if (!service || !day) return null;
-  const hours = freeSlots(ctx.shop, agendaFor(session, ctx), day, service, ctx.now);
-  return byPeriod(ctx.shop, hours);
-}
-
-const escolherPeriodo: State = {
-  enter: (session, ctx) => {
-    const groups = periodsOf(session, ctx);
-    if (!groups) return { session, messages: [], go: "menu" };
-    if (groups.length === 0) return { session, messages: [], go: "escolher_dia" };
-
-    // Um período só não merece uma pergunta. O cliente vai direto para as horas.
-    if (groups.length === 1) {
-      const only = groups[0]!.period.id;
-      return {
-        session: { ...session, draft: { ...session.draft, period: only } },
-        messages: [],
-        go: "escolher_hora",
-      };
-    }
-
-    return {
-      session: {
-        ...session,
-        choices: groups.map((group) => ({ kind: "period", id: group.period.id }) as const),
-      },
-      messages: [
-        msg("escolher_periodo", {
-          dia: session.draft.day ?? "",
-          itens: groups.map((group, i) =>
-            msg("item_periodo", {
-              n: i + 1,
-              periodo: group.period.id,
-              de: group.hours[0]!,
-              ate: group.hours.at(-1)!,
-              quantos: group.hours.length,
-            }),
-          ),
-        }),
-      ],
-    };
-  },
-  exits: ["menu", "escolher_dia", "escolher_hora"],
-  on: [
-    {
-      match: choice("period"),
-      act: (session, match) => ({
-        session:
-          match.choice?.kind === "period"
-            ? { ...session, draft: { ...session.draft, period: match.choice.id } }
-            : session,
-      }),
       go: "escolher_hora",
     },
   ],
@@ -227,29 +167,32 @@ const escolherPeriodo: State = {
 
 const escolherHora: State = {
   enter: (session, ctx) => {
-    const groups = periodsOf(session, ctx);
-    if (!groups) return { session, messages: [], go: "menu" };
+    const service = draftService(session, ctx);
+    const day = session.draft.day;
+    if (!service || !day) return { session, messages: [], go: "menu" };
 
-    const chosen = groups.find((group) => group.period.id === session.draft.period);
-    // O período escolhido pode ter esvaziado (o relógio andou, alguém marcou).
-    if (!chosen) return { session, messages: [], go: "escolher_periodo" };
+    const hours = freeSlots(ctx.shop, agendaFor(session, ctx), day, service, ctx.now);
+    if (hours.length === 0) return { session, messages: [], go: "escolher_dia" };
 
-    const hours = chosen.hours;
+    // O dia inteiro numa mensagem só. Os períodos entram como título, para dar
+    // respiro na leitura, e a numeração corre por cima deles: o cliente conta a
+    // lista de ponta a ponta, e é a mesma ordem guardada nas ofertas.
     const choices: Choice[] = hours.map((start) => ({ kind: "slot", start }));
-    const itens = hours.map((start, i) => msg("item_hora", { n: i + 1, hora: start }));
-    if (groups.length > 1) {
-      choices.push({ kind: "periods" });
-      itens.push(msg("item_outro_periodo", { n: hours.length + 1 }));
+    const itens: Message[] = [];
+    let n = 0;
+    for (const group of byPeriod(ctx.shop, hours)) {
+      itens.push(msg("cabecalho_periodo", { periodo: group.period.id }));
+      for (const start of group.hours) {
+        itens.push(msg("item_hora", { n: ++n, hora: start }));
+      }
     }
 
     return {
       session: { ...session, choices },
-      messages: [
-        msg("escolher_hora", { dia: session.draft.day ?? "", periodo: chosen.period.id, itens }),
-      ],
+      messages: [msg("escolher_hora", { dia: day, itens })],
     };
   },
-  exits: ["menu", "escolher_periodo"],
+  exits: ["menu", "escolher_dia"],
   on: [
     {
       // O número da lista e a hora digitada levam ao mesmo lugar. Quem lê a
@@ -264,7 +207,6 @@ const escolherHora: State = {
       go: (session) => (session.name ? "confirmar" : "pedir_nome"),
       exits: ["confirmar", "pedir_nome"],
     },
-    { match: choice("periods"), go: "escolher_periodo" },
     // Uma hora que dá para ler mas não está livre merece resposta melhor do que
     // "não entendi", e a ordem das transições é o que separa as duas.
     { match: anyHour, go: "hora_indisponivel" },
@@ -502,7 +444,6 @@ export const FLOW: Flow = {
 
     escolher_servico: escolherServico,
     escolher_dia: escolherDia,
-    escolher_periodo: escolherPeriodo,
     escolher_hora: escolherHora,
     hora_indisponivel: {
       enter: says(msg("hora_indisponivel")),
