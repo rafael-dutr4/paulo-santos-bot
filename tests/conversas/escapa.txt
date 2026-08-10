@@ -1,0 +1,29 @@
+# Paginação dos horários e a saída de emergência: "menu" funciona em qualquer
+# ponto do fluxo, sem deixar meio agendamento para trás.
+# now: 2026-08-10 10:00
+
+> oi
+< saudacao
+< menu
+
+> 1
+< escolher_servico
+
+> 3
+< escolher_dia
+
+> 2
+< escolher_hora
+
+> 9
+< escolher_hora
+
+> menu
+< menu
+
+> 4
+< horarios
+< menu
+
+> tchau
+< despedida

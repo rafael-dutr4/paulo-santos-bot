@@ -1,0 +1,19 @@
+# O cliente escreve livre e o bot só entende número. Depois de três tentativas
+# ele para de repetir a pergunta e chama o barbeiro, que é o que evita o loop
+# que faz o cliente odiar o bot.
+# now: 2026-08-10 10:00
+
+> oi
+< saudacao
+< menu
+
+> quero cortar o cabelo
+< nao_entendi
+< menu
+
+> amanhã de tarde
+< nao_entendi
+< menu
+
+> por favor
+< humano

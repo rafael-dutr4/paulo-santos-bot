@@ -1,0 +1,21 @@
+# O cliente já tem um horário marcado e cancela.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+# agenda: 2026-08-12 15:00 corte 5511911111111 Rafa
+
+> oi
+< saudacao
+< menu
+
+> 2
+< meus_agendamentos
+
+> 1
+< o_que_fazer
+
+> 1
+< confirmar_cancelamento
+
+> sim
+< cancelado
+< menu

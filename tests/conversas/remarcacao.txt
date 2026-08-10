@@ -1,0 +1,33 @@
+# Remarcar reaproveita o fluxo de agendamento: o horário antigo fica no draft
+# como `replacing`, sai da agenda para o cálculo dos horários livres (senão ele
+# bloquearia a si mesmo) e a confirmação vira um cancelamento mais uma reserva.
+# O nome vem do agendamento antigo, então o bot não pergunta de novo.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+# agenda: 2026-08-12 15:00 corte 5511911111111 Rafa
+
+> oi
+< saudacao
+< menu
+
+> 2
+< meus_agendamentos
+
+> 1
+< o_que_fazer
+
+> 2
+< escolher_dia
+
+> 2
+< escolher_hora
+
+> 1
+< resumo_remarcacao
+< confirmar
+
+> sim
+< remarcado
+< menu
+
+= 2026-08-12 09:00 corte

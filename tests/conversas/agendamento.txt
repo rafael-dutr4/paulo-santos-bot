@@ -1,0 +1,29 @@
+# O caminho feliz: o cliente chega, marca um corte e recebe a confirmação.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+
+> oi
+< saudacao
+< menu
+
+> 1
+< escolher_servico
+
+> 1
+< escolher_dia
+
+> 1
+< escolher_hora
+
+> 1
+< pedir_nome
+
+> Rafa
+< resumo
+< confirmar
+
+> sim
+< agendado
+< menu
+
+= 2026-08-11 09:00 corte
