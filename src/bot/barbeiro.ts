@@ -27,11 +27,20 @@ import type { Comanda } from "../shop/comanda.ts";
 import { comandaById, itemFor, itemForProduct, itemsFor, pending, totalOf } from "../shop/comanda.ts";
 import type { Range } from "../shop/report.ts";
 import { dayRange, monthRange, report, weekRange } from "../shop/report.ts";
-import { idFrom, productById, serviceById } from "../shop/shop.ts";
-import type { Day, Minutes } from "../shop/time.ts";
+import type { Expediente, Interval } from "../shop/shop.ts";
+import {
+  expedienteOf,
+  idFrom,
+  intervalsOf,
+  productById,
+  serviceById,
+} from "../shop/shop.ts";
+import type { Day, Minutes, Weekday } from "../shop/time.ts";
+import { compare, weekday as weekdayFor } from "../shop/time.ts";
 import type { Enter, Flow, State } from "./engine.ts";
 import { numbered, says, silent } from "./engine.ts";
 import {
+  anyHour,
   anything,
   choice,
   duration,
@@ -51,7 +60,7 @@ import type { CatalogDraft, Choice, ComandaDraft, Ctx, Session, StateName } from
 import { clearDraft } from "./session.ts";
 
 /** Para onde "voltar" leva do lado do barbeiro. */
-const BACK_TARGETS = ["menu_barbeiro", "comanda", "catalogo"];
+const BACK_TARGETS = ["menu_barbeiro", "comanda", "catalogo", "dias_horarios"];
 
 function backFrom(session: Session): StateName {
   return BARBEIRO.states[session.state]?.back ?? "menu_barbeiro";
@@ -68,6 +77,8 @@ const VOLTAR_COMANDA = 5;
 const VOLTAR_SERVICO = 4;
 const VOLTAR_PRODUTO = 3;
 const VOLTAR_RELATORIO = 5;
+const VOLTAR_DIA_ABERTO = 5;
+const VOLTAR_DIA_FECHADO = 2;
 
 // --- lendo o rascunho ------------------------------------------------------
 
@@ -803,6 +814,379 @@ const novoTempo: State = {
   ],
 };
 
+// --- os dias e o expediente ------------------------------------------------
+
+/** A semana como a barbearia pensa nela: começa na segunda. */
+const SEMANA: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
+
+const diasHorarios: State = {
+  enter: (session, ctx) => {
+    const choices: Choice[] = [
+      ...SEMANA.map((weekday) => ({ kind: "weekday", weekday }) as const),
+      { kind: "fechados" },
+    ];
+    const itens: Message[] = SEMANA.map((weekday, i) =>
+      msg("linha_dia_semana", {
+        n: i + 1,
+        dia: weekday,
+        aberto: ctx.shop.hours[weekday].length > 0 ? 1 : 0,
+        horario: intervalosEscritos(ctx.shop.hours[weekday]),
+      }),
+    );
+    const lista = numbered(
+      [...itens, msg("item_fechados", { n: SEMANA.length + 1, quantos: proximasFolgas(ctx).length })],
+      choices,
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("dias_horarios", { itens: lista.itens })],
+    };
+  },
+  on: [
+    {
+      match: choice("weekday"),
+      act: (session, match) => ({
+        session:
+          match.choice?.kind === "weekday"
+            ? { ...session, draft: { weekday: match.choice.weekday } }
+            : session,
+      }),
+      go: "editar_dia_semana",
+    },
+    { match: choice("fechados"), go: "dias_fechados" },
+  ],
+};
+
+/** Os intervalos escritos como dado, para o texto não precisar do tipo. */
+function intervalosEscritos(intervals: Interval[]): string {
+  return intervals.map((i) => `${i.start}-${i.end}`).join(" ");
+}
+
+const weekdayOf = (session: Session): Weekday | undefined => session.draft.weekday;
+
+function expedienteDo(session: Session, ctx: Ctx): Expediente | null {
+  const weekday = weekdayOf(session);
+  return weekday === undefined ? null : expedienteOf(ctx.shop.hours[weekday]);
+}
+
+const diaAberto = (session: Session, ctx: Ctx): boolean => expedienteDo(session, ctx) !== null;
+const diaFechado = (session: Session, ctx: Ctx): boolean => !diaAberto(session, ctx);
+
+/**
+ * Os agendamentos futuros que caem num dia da semana.
+ *
+ * Fechar um dia com gente marcada não é decisão de bot: o barbeiro precisa
+ * falar com essas pessoas antes. Então o bot recusa e mostra quem são.
+ */
+function marcadosNoWeekday(session: Session, ctx: Ctx): Appointment[] {
+  const weekday = weekdayOf(session);
+  if (weekday === undefined) return [];
+  return ctx.agenda.filter(
+    (a) => weekdayFor(a.day) === weekday && compare({ day: a.day, at: a.start }, ctx.now) >= 0,
+  );
+}
+
+const editarDiaSemana: State = {
+  enter: (session, ctx) => {
+    const weekday = weekdayOf(session);
+    if (weekday === undefined) return { session, messages: [], go: "dias_horarios" };
+    const expediente = expedienteOf(ctx.shop.hours[weekday]);
+    if (!expediente) {
+      return {
+        session,
+        messages: [msg("editar_dia_fechado", { dia: weekday, voltar: VOLTAR_DIA_FECHADO })],
+      };
+    }
+    return {
+      session,
+      messages: [
+        msg("editar_dia_aberto", {
+          dia: weekday,
+          abre: expediente.abre,
+          fecha: expediente.fecha,
+          almoco_de: expediente.almoco?.start ?? 0,
+          almoco_ate: expediente.almoco?.end ?? 0,
+          voltar: VOLTAR_DIA_ABERTO,
+        }),
+      ],
+    };
+  },
+  exits: ["dias_horarios"],
+  back: "dias_horarios",
+  on: [
+    { match: when(diaAberto, option(1)), go: "mudar_abertura" },
+    { match: when(diaAberto, option(2)), go: "mudar_fechamento" },
+    { match: when(diaAberto, option(3)), go: "mudar_almoco" },
+    {
+      match: when(diaAberto, option(4)),
+      act: (session, _match, ctx) =>
+        marcadosNoWeekday(session, ctx).length > 0
+          ? { session }
+          : { session, effects: [{ kind: "hours", weekday: weekdayOf(session)!, intervals: [] }] },
+      go: (session, ctx) => (marcadosNoWeekday(session, ctx).length > 0 ? "dia_tem_gente" : "salvo"),
+      exits: ["dia_tem_gente", "salvo"],
+    },
+    {
+      // Abrir um dia fechado copia o expediente de um dia que já está aberto:
+      // uma barbearia não tem sete horários diferentes, tem um e algumas
+      // exceções. Se quiser outro, os três primeiros itens estão logo ali.
+      match: when(diaFechado, option(1)),
+      act: (session, _match, ctx) => {
+        const weekday = weekdayOf(session);
+        const modelo = SEMANA.map((d) => ctx.shop.hours[d]).find((i) => i.length > 0);
+        if (weekday === undefined) return { session };
+        return {
+          session,
+          effects: [
+            {
+              kind: "hours",
+              weekday,
+              intervals: modelo ?? [{ start: 9 * 60, end: 18 * 60 }],
+            },
+          ],
+        };
+      },
+      go: "editar_dia_semana",
+    },
+    { match: when(diaAberto, option(VOLTAR_DIA_ABERTO)), go: backFrom, exits: BACK_TARGETS },
+    { match: when(diaFechado, option(VOLTAR_DIA_FECHADO)), go: backFrom, exits: BACK_TARGETS },
+  ],
+};
+
+/** A hora que acabou de ser dita, para o destino poder conferi-la. */
+function lembrar(session: Session, hora: number | undefined): Session {
+  return hora === undefined ? session : { ...session, draft: { ...session.draft, hora } };
+}
+
+/** Guarda o expediente novo, se ele fizer sentido. */
+function salvarExpediente(session: Session, ctx: Ctx, mudanca: Partial<Expediente>): Effect[] {
+  const weekday = weekdayOf(session);
+  const atual = expedienteDo(session, ctx);
+  if (weekday === undefined || !atual) return [];
+  const novo = { ...atual, ...mudanca };
+  if (novo.abre >= novo.fecha) return [];
+  return [{ kind: "hours", weekday, intervals: intervalsOf(novo) }];
+}
+
+const valido = (session: Session, ctx: Ctx, mudanca: Partial<Expediente>): boolean =>
+  salvarExpediente(session, ctx, mudanca).length > 0;
+
+const mudarAbertura: State = {
+  enter: (session, ctx) => ({
+    session,
+    messages: [msg("mudar_abertura", { abre: expedienteDo(session, ctx)?.abre ?? 0 })],
+  }),
+  back: "dias_horarios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match, ctx) => ({
+        session: lembrar(session, match.number),
+        effects: salvarExpediente(session, ctx, { abre: match.number ?? 0 }),
+      }),
+      // Abrir depois de fechar não é um horário, é um engano.
+      go: (session, ctx) => (valido(session, ctx, { abre: session.draft.hora ?? 0 }) ? "salvo" : "horario_invalido"),
+      exits: ["salvo", "horario_invalido"],
+    },
+  ],
+};
+
+const mudarFechamento: State = {
+  enter: (session, ctx) => ({
+    session,
+    messages: [msg("mudar_fechamento", { fecha: expedienteDo(session, ctx)?.fecha ?? 0 })],
+  }),
+  back: "dias_horarios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match, ctx) => ({
+        session: lembrar(session, match.number),
+        effects: salvarExpediente(session, ctx, { fecha: match.number ?? 0 }),
+      }),
+      go: (session, ctx) => (valido(session, ctx, { fecha: session.draft.hora ?? 0 }) ? "salvo" : "horario_invalido"),
+      exits: ["salvo", "horario_invalido"],
+    },
+  ],
+};
+
+const mudarAlmoco: State = {
+  enter: (session, ctx) => {
+    const expediente = expedienteDo(session, ctx);
+    return {
+      session,
+      messages: [
+        msg("mudar_almoco", {
+          de: expediente?.almoco?.start ?? 0,
+          ate: expediente?.almoco?.end ?? 0,
+          tem: expediente?.almoco ? 1 : 0,
+        }),
+      ],
+    };
+  },
+  back: "dias_horarios",
+  on: [
+    {
+      // Sem almoço o dia é um intervalo só, que é como o sábado já funciona.
+      match: keyword("sem", "direto", "nenhum"),
+      act: (session, _match, ctx) => {
+        const weekday = weekdayOf(session);
+        const atual = expedienteDo(session, ctx);
+        if (weekday === undefined || !atual) return { session };
+        return {
+          session,
+          effects: [
+            { kind: "hours", weekday, intervals: intervalsOf({ abre: atual.abre, fecha: atual.fecha }) },
+          ],
+        };
+      },
+      go: "salvo",
+    },
+    {
+      match: anyHour,
+      act: (session, match) => ({
+        session: { ...session, draft: { ...session.draft, almoco: match.number ?? 0 } },
+      }),
+      go: "almoco_ate",
+    },
+  ],
+};
+
+const almocoAte: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("almoco_ate", { de: session.draft.almoco ?? 0 })],
+  }),
+  back: "dias_horarios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match, ctx) => {
+        const de = session.draft.almoco;
+        const ate = match.number;
+        if (de === undefined || ate === undefined) return { session };
+        return {
+          session: lembrar(session, ate),
+          effects: salvarExpediente(session, ctx, { almoco: { start: de, end: ate } }),
+        };
+      },
+      go: (session, ctx) =>
+        session.draft.almoco !== undefined &&
+        valido(session, ctx, {
+          almoco: { start: session.draft.almoco, end: session.draft.hora ?? 0 },
+        })
+          ? "salvo"
+          : "horario_invalido",
+      exits: ["salvo", "horario_invalido"],
+    },
+  ],
+};
+
+// --- as datas fechadas -----------------------------------------------------
+
+/** As folgas de hoje para a frente. As que passaram não interessam mais. */
+function proximasFolgas(ctx: Ctx): Day[] {
+  return ctx.shop.holidays.filter((day) => day >= ctx.now.day).sort();
+}
+
+const diasFechados: State = {
+  enter: (session, ctx) => {
+    const folgas = proximasFolgas(ctx);
+    const lista = numbered(
+      [
+        ...folgas.map((day, i) => msg("item_dia_fechado", { n: i + 1, dia: day })),
+        msg("item_fechar_dia", { n: folgas.length + 1 }),
+      ],
+      [...folgas.map((day) => ({ kind: "day", day }) as const), { kind: "novo", what: "produto" }],
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("dias_fechados", { itens: lista.itens, quantos: folgas.length })],
+    };
+  },
+  back: "dias_horarios",
+  on: [
+    {
+      match: choice("day"),
+      act: (session, match) => ({
+        session:
+          match.choice?.kind === "day"
+            ? { ...session, draft: { folga: match.choice.day } }
+            : session,
+      }),
+      go: "confirmar_reabrir",
+    },
+    { match: choice("novo"), go: "pedir_dia_fechado" },
+  ],
+};
+
+const pedirDiaFechado: State = {
+  enter: says(msg("pedir_dia_fechado")),
+  back: "dias_horarios",
+  on: [
+    {
+      match: someDay,
+      act: (session, match, ctx) => {
+        if (match.choice?.kind !== "day") return { session };
+        const day = match.choice.day;
+        const guardado: Session = { ...session, draft: { folga: day } };
+        return marcadosNoDia(day, ctx).length > 0
+          ? { session: guardado }
+          : { session: guardado, effects: [{ kind: "close_day", day }] };
+      },
+      go: (session, ctx) =>
+        marcadosNoDia(session.draft.folga ?? "", ctx).length > 0 ? "dia_tem_gente" : "dia_fechado",
+      exits: ["dia_tem_gente", "dia_fechado"],
+    },
+  ],
+};
+
+function marcadosNoDia(day: Day, ctx: Ctx): Appointment[] {
+  return ctx.agenda.filter((a) => a.day === day);
+}
+
+const diaTemGente: State = {
+  enter: (session, ctx) => {
+    const day = session.draft.folga;
+    const marcados = day ? marcadosNoDia(day, ctx) : marcadosNoWeekday(session, ctx);
+    return {
+      session,
+      messages: [
+        msg("dia_tem_gente", {
+          itens: marcados.map((a) =>
+            msg("item_marcado_no_dia", {
+              dia: a.day,
+              hora: a.start,
+              nome: a.clientName,
+              servico: serviceName(ctx, a.serviceId),
+            }),
+          ),
+        }),
+      ],
+    };
+  },
+  goto: "dias_horarios",
+};
+
+const confirmarReabrir: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("confirmar_reabrir", { dia: session.draft.folga ?? "" })],
+  }),
+  back: "dias_horarios",
+  on: [
+    {
+      match: yes,
+      act: (session) => {
+        const day = session.draft.folga;
+        return day ? { session, effects: [{ kind: "open_day", day }] } : { session };
+      },
+      go: "dias_fechados",
+    },
+    { match: no, go: "dias_fechados" },
+  ],
+};
+
 // --- o relatório -----------------------------------------------------------
 
 /**
@@ -889,6 +1273,7 @@ const menuBarbeiro: State = {
     { match: option(3), go: "comandas" },
     { match: option(4), go: "menu_relatorio" },
     { match: option(5), go: "catalogo" },
+    { match: option(6), go: "dias_horarios" },
   ],
 };
 
@@ -935,9 +1320,30 @@ export const BARBEIRO: Flow = {
     novo_nome: novoNome,
     novo_preco: novoPreco,
     novo_tempo: novoTempo,
-    // Depois de mexer, a lista de novo: é ela que prova que mudou.
-    salvo: { enter: says(msg("salvo")), goto: "catalogo" },
+    // Depois de mexer, a lista de novo: é ela que prova que mudou. Qual lista
+    // depende do que estava sendo mexido, e é o rascunho que sabe disso.
+    salvo: {
+      enter: (session) => ({
+        session,
+        messages: [msg("salvo")],
+        go: session.draft.weekday === undefined ? "catalogo" : "dias_horarios",
+      }),
+      exits: ["catalogo", "dias_horarios"],
+    },
     tirado: { enter: says(msg("tirado")), goto: "catalogo" },
+
+    dias_horarios: diasHorarios,
+    editar_dia_semana: editarDiaSemana,
+    mudar_abertura: mudarAbertura,
+    mudar_fechamento: mudarFechamento,
+    mudar_almoco: mudarAlmoco,
+    almoco_ate: almocoAte,
+    horario_invalido: { enter: says(msg("horario_invalido")), goto: "editar_dia_semana" },
+    dias_fechados: diasFechados,
+    pedir_dia_fechado: pedirDiaFechado,
+    dia_fechado: { enter: says(msg("dia_fechado")), goto: "dias_fechados" },
+    dia_tem_gente: diaTemGente,
+    confirmar_reabrir: confirmarReabrir,
 
     menu_relatorio: menuRelatorio,
     relatorio_hoje: { enter: relatorioDe((_s, ctx) => dayRange(ctx.now.day)), goto: "menu_barbeiro" },

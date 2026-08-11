@@ -74,6 +74,10 @@ function resumo(choice: Choice): string {
       return `novo ${choice.what}`;
     case "voltar":
       return "voltar";
+    case "weekday":
+      return `semana ${choice.weekday}`;
+    case "fechados":
+      return "dias fechados";
     case "item":
       return `item ${choice.index}`;
     case "payment":
@@ -96,7 +100,7 @@ export function showAgenda(db: Db): void {
     } · ${appointment.clientName}`;
   });
 
-  fill("catalogo", "catálogo vazio", [...db.catalog.services, ...db.catalog.products], (item) =>
+  fill("catalogo", "catálogo vazio", [...db.settings.services, ...db.settings.products], (item) =>
     "minutes" in item
       ? `${item.name} · ${item.minutes} min · ${brl(item.price)}`
       : `${item.name} · ${brl(item.price)}`,

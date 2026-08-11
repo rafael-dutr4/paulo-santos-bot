@@ -99,6 +99,18 @@ function tempo(minutos: Minutes): string {
   return resto === 0 ? `${horas}h` : `${horas}h${String(resto).padStart(2, "0")}`;
 }
 
+/** `540-720 840-1140` vira "09:00 às 12:00 e 14:00 às 19:00". */
+function faixas(dado: string): string {
+  return dado
+    .split(" ")
+    .filter((faixa) => faixa !== "")
+    .map((faixa) => {
+      const [de, ate] = faixa.split("-").map(Number);
+      return `${hhmm(de ?? 0)} às ${hhmm(ate ?? 0)}`;
+    })
+    .join(" e ");
+}
+
 function intervalos(list: Interval[]): string {
   return list.map((i) => `${hhmm(i.start)} às ${hhmm(i.end)}`).join(" e ");
 }
@@ -312,6 +324,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "3 - Fechar comanda",
       "4 - Relatório",
       "5 - Serviços e produtos",
+      "6 - Dias e horários",
     ].join("\n"),
 
   despedida_barbeiro: () => "Fechado. Bom trabalho 💈",
@@ -451,6 +464,95 @@ export const PTBR: Record<MessageKey, Template> = {
 
   salvo: () => "Pronto ✅",
   tirado: () => "Tirei da lista 👍",
+
+  // --- os dias e o expediente ---------------------------------------------
+
+  dias_horarios: (w) => ["🗓 Dias e horários", "", str(w, "itens")].join("\n"),
+
+  /**
+   * Uma linha da semana.
+   *
+   * O horário chega como `540-720 840-1140`, que é o dado, e vira "09:00 às
+   * 12:00 e 14:00 às 19:00" aqui — o motor não escreve hora nenhuma.
+   */
+  linha_dia_semana: (w) => {
+    const nome = DIAS[Number(w["dia"])] ?? "";
+    const fim = num(w, "aberto") === 1 ? faixas(str(w, "horario")) : "fechado";
+    return `${num(w, "n")} - ${nome} · ${fim}`;
+  },
+
+  item_fechados: (w) =>
+    `${num(w, "n")} - Dias fechados (${num(w, "quantos")})`,
+
+  editar_dia_aberto: (w) => {
+    const almoco =
+      num(w, "almoco_ate") > 0
+        ? `Almoço: ${hora(num(w, "almoco_de"))} às ${hora(num(w, "almoco_ate"))}`
+        : "Sem almoço, direto";
+    return [
+      `${DIAS[Number(w["dia"])] ?? ""}`,
+      `Abre ${hora(num(w, "abre"))}, fecha ${hora(num(w, "fecha"))}`,
+      almoco,
+      "",
+      "1 - Mudar a abertura",
+      "2 - Mudar o fechamento",
+      "3 - Mudar o almoço",
+      "4 - Fechar neste dia da semana",
+      `${num(w, "voltar")} - Voltar`,
+    ].join("\n");
+  },
+
+  editar_dia_fechado: (w) =>
+    [
+      `${DIAS[Number(w["dia"])] ?? ""} · fechado`,
+      "",
+      "1 - Abrir neste dia",
+      `${num(w, "voltar")} - Voltar`,
+    ].join("\n"),
+
+  mudar_abertura: (w) => `Abre ${hora(num(w, "abre"))}. Passa a abrir que horas?\n\nOu voltar.`,
+  mudar_fechamento: (w) => `Fecha ${hora(num(w, "fecha"))}. Passa a fechar que horas?\n\nOu voltar.`,
+
+  mudar_almoco: (w) =>
+    [
+      num(w, "tem") === 1
+        ? `Almoço das ${hora(num(w, "de"))} às ${hora(num(w, "ate"))}. Passa a começar que horas?`
+        : "Não tem almoço neste dia. Passa a começar que horas?",
+      "",
+      "Responde a hora, sem para tirar o almoço, ou voltar.",
+    ].join("\n"),
+
+  almoco_ate: (w) => `Almoço a partir das ${hora(num(w, "de"))}. Até que horas?`,
+
+  dias_fechados: (w) =>
+    [
+      num(w, "quantos") === 0 ? "Nenhum dia fechado por enquanto." : "🚫 Dias fechados:",
+      "",
+      str(w, "itens"),
+    ].join("\n"),
+  item_dia_fechado: (w) => `${num(w, "n")} - ${dia(str(w, "dia"))}`,
+  item_fechar_dia: (w) => `${num(w, "n")} - Fechar um dia`,
+
+  pedir_dia_fechado: () =>
+    ["Qual dia você não vai abrir? (25/12, sexta, amanhã)", "", "Ou voltar."].join("\n"),
+
+  dia_fechado: () => "Fechado nesse dia 👍 Ele some da agenda do cliente.",
+
+  dia_tem_gente: (w) =>
+    [
+      "Não dá: esse dia tem horário marcado 😕",
+      "",
+      str(w, "itens"),
+      "",
+      "Cancela ou remarca com essas pessoas primeiro, aí você fecha o dia.",
+    ].join("\n"),
+  item_marcado_no_dia: (w) =>
+    `· ${dia(str(w, "dia"))} ${hora(num(w, "hora"))} · ${str(w, "nome")} · ${str(w, "servico")}`,
+
+  horario_invalido: () =>
+    "Esse horário não fecha 😕 A abertura vem antes do fechamento, e o almoço no meio dos dois.",
+
+  confirmar_reabrir: (w) => `Abrir ${dia(str(w, "dia"))} de novo? (sim / não)`,
 
   menu_relatorio: (w) =>
     [

@@ -9,7 +9,7 @@
 import type { Agenda } from "../shop/agenda.ts";
 import type { Comanda, Item } from "../shop/comanda.ts";
 import type { PaymentId, ProductId, ServiceId, Shop } from "../shop/shop.ts";
-import type { Day, Minutes, Moment } from "../shop/time.ts";
+import type { Day, Minutes, Moment, Weekday } from "../shop/time.ts";
 
 export type StateName = string;
 
@@ -36,6 +36,9 @@ export type Choice =
   | { kind: "novo"; what: CatalogKind }
   /** A última linha de toda lista numerada. */
   | { kind: "voltar" }
+  | { kind: "weekday"; weekday: Weekday }
+  /** A linha que leva à lista de datas fechadas. */
+  | { kind: "fechados" }
   | { kind: "payment"; id: PaymentId };
 
 /**
@@ -86,6 +89,14 @@ export type Draft = {
   asking?: "agenda" | "relatorio";
   comanda?: ComandaDraft;
   catalogo?: CatalogDraft;
+  /** O dia da semana cujo expediente está sendo mexido. */
+  weekday?: Weekday;
+  /** O começo do almoço, enquanto o fim ainda não foi dito. */
+  almoco?: Minutes;
+  /** A última hora dita, para a transição conferir o que o efeito fez. */
+  hora?: Minutes;
+  /** A data que o barbeiro quer fechar ou reabrir. */
+  folga?: Day;
 };
 
 export type Session = {

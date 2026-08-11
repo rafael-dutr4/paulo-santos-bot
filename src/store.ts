@@ -20,28 +20,28 @@ import type { Ctx, Session } from "./bot/session.ts";
 import type { Agenda, Effect } from "./shop/agenda.ts";
 import { apply as applyToAgenda } from "./shop/agenda.ts";
 import type { Comanda } from "./shop/comanda.ts";
-import type { Catalog } from "./shop/shop.ts";
-import { SHOP, catalogOf, withCatalog } from "./shop/shop.ts";
+import type { Settings } from "./shop/shop.ts";
+import { SHOP, settingsOf, withSettings } from "./shop/shop.ts";
 
 /**
  * Tudo que a barbearia guarda: o que foi prometido, o que aconteceu e o que
  * ela vende.
  *
- * O catálogo entrou aqui quando o barbeiro ganhou o direito de mexer nele pela
- * conversa. Preço e tempo deixaram de ser dado de código no dia em que uma
- * mensagem passou a mudá-los, e dado que muda em produção mora no banco.
+ * Os ajustes entraram aqui quando o barbeiro ganhou o direito de mexer neles
+ * pela conversa: preço, tempo, produto, horário de funcionamento e dia
+ * fechado. Dado que muda em produção mora no banco, não no código.
  */
 export type Db = {
   agenda: Agenda;
   comandas: Comanda[];
-  catalog: Catalog;
+  settings: Settings;
 };
 
-/** Um banco novo começa com o catálogo com que a barbearia abriu as portas. */
-export const emptyDb = (catalog: Catalog = catalogOf(SHOP)): Db => ({
+/** Um banco novo começa com a barbearia como ela abriu as portas. */
+export const emptyDb = (settings: Settings = settingsOf(SHOP)): Db => ({
   agenda: [],
   comandas: [],
-  catalog,
+  settings,
 });
 
 export type Store = {
@@ -80,19 +80,44 @@ export function write(db: Db, effects: Effect[]): Db {
       case "service":
         return {
           ...current,
-          catalog: { ...current.catalog, services: upsert(current.catalog.services, effect.service) },
+          settings: { ...current.settings, services: upsert(current.settings.services, effect.service) },
         };
       case "product":
         return {
           ...current,
-          catalog: { ...current.catalog, products: upsert(current.catalog.products, effect.product) },
+          settings: { ...current.settings, products: upsert(current.settings.products, effect.product) },
+        };
+      case "hours":
+        return {
+          ...current,
+          settings: {
+            ...current.settings,
+            hours: { ...current.settings.hours, [effect.weekday]: effect.intervals },
+          },
+        };
+      // Um dia fechado é uma data numa lista, e fechar duas vezes é fechar uma.
+      case "close_day":
+        return {
+          ...current,
+          settings: {
+            ...current.settings,
+            holidays: [...new Set([...current.settings.holidays, effect.day])].sort(),
+          },
+        };
+      case "open_day":
+        return {
+          ...current,
+          settings: {
+            ...current.settings,
+            holidays: current.settings.holidays.filter((day) => day !== effect.day),
+          },
         };
       case "remove":
         return {
           ...current,
-          catalog: {
-            ...current.catalog,
-            [effect.from]: current.catalog[effect.from].filter((item) => item.id !== effect.id),
+          settings: {
+            ...current.settings,
+            [effect.from]: current.settings[effect.from].filter((item) => item.id !== effect.id),
           },
         };
     }
@@ -109,14 +134,14 @@ export function write(db: Db, effects: Effect[]): Db {
  */
 export function advance(ctx: Ctx, effects: Effect[]): Ctx {
   const db = write(
-    { agenda: ctx.agenda, comandas: ctx.comandas, catalog: catalogOf(ctx.shop) },
+    { agenda: ctx.agenda, comandas: ctx.comandas, settings: settingsOf(ctx.shop) },
     effects,
   );
   return {
     ...ctx,
     agenda: db.agenda,
     comandas: db.comandas,
-    shop: withCatalog(ctx.shop, db.catalog),
+    shop: withSettings(ctx.shop, db.settings),
   };
 }
 

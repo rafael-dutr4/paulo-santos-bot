@@ -16,7 +16,7 @@
 
 import { reply } from "../bot/flow.ts";
 import type { Ctx } from "../bot/session.ts";
-import { SHOP, withCatalog } from "../shop/shop.ts";
+import { SHOP, withSettings } from "../shop/shop.ts";
 import { hhmm } from "../shop/time.ts";
 import type { Moment } from "../shop/time.ts";
 import { say } from "../text/say.ts";
@@ -69,7 +69,7 @@ export function conversa(wiring: Wiring): Conversa {
     const db = store.db();
     return {
       now: at,
-      shop: withCatalog(SHOP, db.catalog),
+      shop: withSettings(SHOP, db.settings),
       agenda: db.agenda,
       comandas: db.comandas,
     };

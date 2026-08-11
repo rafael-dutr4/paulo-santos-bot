@@ -20,7 +20,7 @@ This project exists as much for the learning as for the product. Explain the mec
 - **Toda lista numerada termina em "voltar".** A última linha sai de `numbered()` e é atendida por uma regra global, uma por tabela. As ofertas pertencem ao estado que as fez: entrar em qualquer estado apaga a lista anterior.
 - **The flow is data.** The state tables in `src/bot/flow.ts` (o cliente) and `src/bot/barbeiro.ts` (o barbeiro) are objects, and `engine.ts` is an interpreter that knows nothing about barbershops. Anything specific to the barbershop goes in a table or in `src/shop/`, never in the interpreter. A third conversation would be a third file, not an `if`.
 - **The shell holds the world, behind a port.** `src/store.ts` says what a store has to do (four operations, one of them pure) and the simulator implements it over `localStorage`. A database later is another implementation of the same four, and nothing above it changes.
-- **O catálogo é dado do banco, não do código.** Preço, tempo, serviço e produto mudam pela conversa do barbeiro, então eles moram no `Db` e a casca monta o `Shop` de cada turno com `withCatalog(SHOP, db.catalog)`. `SHOP` é com o que a barbearia abre as portas, e o resto dele (endereço, horário, formas de pagamento) continua sendo código.
+- **O que o barbeiro edita é dado do banco, não do código.** Preço, tempo, serviço, produto, horário de funcionamento e dia fechado mudam pela conversa, então moram no `Db` como `Settings` e a casca monta o `Shop` de cada turno com `withSettings(SHOP, db.settings)`. `SHOP` é com o que a barbearia abre as portas, e o que não muda por conversa (endereço, telefone, formas de pagamento, o tamanho da grade) continua sendo código.
 - **Time is wall clock time, not `Date`.** A day is `"2026-08-11"` and an hour is minutes since midnight. `Date` appears once, in `src/sim/clock.ts`, to read the browser clock.
 - **The DOM lives in `src/sim/` and nowhere else.** Everything above it runs in Node with no shims.
 
@@ -36,7 +36,7 @@ src/bot/      the interpreter, pure
   barbeiro.ts   the barber state table: agenda, comanda, relatório
   engine.ts     run(), the interpreter loop
 src/shop/     the domain, pure
-  shop.ts       hours, address, os telefones do barbeiro, e o catálogo inicial
+  shop.ts       endereço, telefone, e o estado inicial do que se edita
   time.ts       Day, Minutes, Moment, days-from-civil arithmetic
   slots.ts      freeSlots(), the interval subtraction
   agenda.ts     Appointment, Effect, and applying an Effect to an agenda

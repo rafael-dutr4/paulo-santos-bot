@@ -152,6 +152,7 @@ porque ele é o humano.
 | 3 | `comandas`, ou `nada_a_fechar` |
 | 4 | `menu_relatorio` |
 | 5 | `catalogo` |
+| 6 | `dias_horarios` |
 
 ## A agenda
 
@@ -236,6 +237,37 @@ Um preço que o barbeiro muda na conversa dele aparece no menu do cliente no
 turno seguinte, sem ninguém avisar ninguém: as duas conversas leem o mesmo
 banco. E um aumento não reescreve o passado, porque a comanda copiou o nome e o
 preço no dia em que foi fechada.
+
+## Dias e horários
+
+O horário de funcionamento e as datas fechadas moram no banco pela mesma razão
+que os preços: o barbeiro decide a folga na quinta à noite, e isso não pode
+depender de alguém recompilar.
+
+| estado | comportamento |
+| --- | --- |
+| `dias_horarios` | A semana, de segunda a domingo, com o horário de cada dia ou "fechado", e a linha das datas fechadas. |
+| `editar_dia_semana` | Abre, fecha, almoço e "fechar neste dia da semana". Num dia fechado só existe "abrir", e abrir copia o expediente de um dia que já abre. |
+| `mudar_abertura` / `mudar_fechamento` / `mudar_almoco` → `almoco_ate` | Aceitam a hora como o cliente já dizia (`18:00`, `seis da tarde`), e `sem` tira o almoço. |
+| `horario_invalido` | Abrir depois de fechar não é horário, é engano. Nada é salvo. |
+| `dias_fechados` | As datas de hoje para a frente. Escolher uma abre de novo; a última linha fecha um dia novo. |
+| `pedir_dia_fechado` | Lê a data como o resto do bot (`25/12`, `sexta`, `amanhã`). |
+| `dia_tem_gente` | Um dia com horário marcado não fecha. O bot mostra quem está marcado e manda cancelar ou remarcar antes — falar com essas pessoas não é trabalho de bot. |
+
+Na conversa o expediente é abre, fecha e almoço, que é como uma pessoa descreve
+o próprio dia. No dado continuam sendo intervalos, porque é assim que a
+subtração de `slots.ts` funciona e porque o almoço não é regra em lugar nenhum:
+ele é o buraco entre dois intervalos. `expedienteOf()` e `intervalsOf()` fazem a
+tradução, nos dois sentidos.
+
+```
+{ kind: "hours", weekday, intervals }
+{ kind: "close_day", day }   { kind: "open_day", day }
+```
+
+Fechar um dia no lado do barbeiro faz o dia sumir da lista do cliente no turno
+seguinte — é a mesma conta de sempre em `slots.ts`, lendo um `shop` que agora
+vem do banco.
 
 ## O relatório
 

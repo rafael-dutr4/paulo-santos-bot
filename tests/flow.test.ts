@@ -132,11 +132,13 @@ test("a step back never walks forward", () => {
 });
 
 test("a comanda só fecha na última pergunta", () => {
-  // O único efeito da tabela do barbeiro é o `close`, e ele sai de dois
-  // lugares: da falta e da forma de pagamento. Qualquer outro estado que
-  // aprenda a escrever passa por aqui primeiro.
+  // O efeito que fecha uma comanda sai de dois lugares, e só de dois: da falta
+  // e da forma de pagamento. Qualquer outro estado que aprenda a fechar
+  // comanda passa por aqui primeiro.
   const escrevem = Object.entries(BARBEIRO.states).filter(([, state]) =>
-    (state.on ?? []).some((transition) => transition.act && /close/.test(String(transition.act))),
+    (state.on ?? []).some(
+      (transition) => transition.act && /kind: "close"/.test(String(transition.act)),
+    ),
   );
   assert.deepEqual(
     escrevem.map(([name]) => name).sort(),

@@ -137,23 +137,65 @@ export const SHOP: Shop = {
 /**
  * A parte da barbearia que o barbeiro edita pela conversa.
  *
- * Preço e tempo mudam com o mercado, e produto novo chega toda semana. O resto
- * — endereço, horário de funcionamento, formas de pagamento — muda de ano em
- * ano e continua sendo dado de código.
+ * Preço e tempo mudam com o mercado, produto novo chega toda semana, e o dia
+ * de folga é decidido na quinta à noite. O resto — endereço, telefone, formas
+ * de pagamento, o tamanho da grade — muda de ano em ano e continua sendo dado
+ * de código.
  *
- * Por isso o catálogo mora no banco e não aqui: `SHOP` guarda com o que a
- * barbearia começa, e a casca monta o `Shop` de cada turno pondo por cima o que
- * está guardado. Nada acima disso percebe a diferença, porque o fluxo sempre
- * leu `ctx.shop.services` em vez de importar a constante.
+ * Por isso isto mora no banco e não aqui: `SHOP` guarda com o que a barbearia
+ * abre as portas, e a casca monta o `Shop` de cada turno pondo por cima o que
+ * está guardado. Nada acima percebe a diferença, porque o fluxo sempre leu
+ * `ctx.shop` em vez de importar a constante.
  */
-export type Catalog = { services: Service[]; products: Product[] };
+export type Settings = {
+  services: Service[];
+  products: Product[];
+  hours: Record<Weekday, Interval[]>;
+  holidays: Day[];
+};
 
-export function catalogOf(shop: Shop): Catalog {
-  return { services: shop.services, products: shop.products };
+export function settingsOf(shop: Shop): Settings {
+  return {
+    services: shop.services,
+    products: shop.products,
+    hours: shop.hours,
+    holidays: shop.holidays,
+  };
 }
 
-export function withCatalog(shop: Shop, catalog: Catalog): Shop {
-  return { ...shop, services: catalog.services, products: catalog.products };
+export function withSettings(shop: Shop, settings: Settings): Shop {
+  return { ...shop, ...settings };
+}
+
+/**
+ * O horário de um dia lido como o barbeiro pensa nele: abre, fecha e almoço.
+ *
+ * No dado são intervalos, porque é assim que a subtração de `slots.ts` funciona
+ * e porque o almoço não é uma regra em lugar nenhum — ele é o buraco entre dois
+ * intervalos. Na conversa são três perguntas, que é como uma pessoa descreve o
+ * próprio dia.
+ */
+export type Expediente = { abre: Minutes; fecha: Minutes; almoco?: Interval };
+
+export function expedienteOf(intervals: Interval[]): Expediente | null {
+  const primeiro = intervals[0];
+  const ultimo = intervals.at(-1);
+  if (!primeiro || !ultimo) return null;
+  const almoco =
+    intervals.length > 1 ? { start: primeiro.end, end: intervals[1]!.start } : undefined;
+  return { abre: primeiro.start, fecha: ultimo.end, ...(almoco ? { almoco } : {}) };
+}
+
+/** O caminho de volta: de abre/fecha/almoço para os intervalos do dado. */
+export function intervalsOf(expediente: Expediente): Interval[] {
+  const { abre, fecha, almoco } = expediente;
+  if (!almoco || almoco.start <= abre || almoco.end >= fecha || almoco.start >= almoco.end) {
+    return [{ start: abre, end: fecha }];
+  }
+  return [
+    { start: abre, end: almoco.start },
+    { start: almoco.end, end: fecha },
+  ];
 }
 
 /**

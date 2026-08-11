@@ -10,7 +10,7 @@
 
 import type { Effect } from "../shop/agenda.ts";
 import type { Shop } from "../shop/shop.ts";
-import { SHOP, withCatalog } from "../shop/shop.ts";
+import { SHOP, withSettings } from "../shop/shop.ts";
 import type { Moment } from "../shop/time.ts";
 import type { Db } from "../store.ts";
 import type { Bubble } from "./chat.ts";
@@ -76,7 +76,7 @@ const barbeiro = wire(BARBER, {
  */
 function semear(quais: (shop: Shop, db: Db, now: Moment) => Effect[]): void {
   const atual = db.db();
-  db.apply(quais(withCatalog(SHOP, atual.catalog), atual, readClock()));
+  db.apply(quais(withSettings(SHOP, atual.settings), atual, readClock()));
   changed();
 }
 

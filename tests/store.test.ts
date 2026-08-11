@@ -51,25 +51,25 @@ test("fechar duas vezes o mesmo horário substitui, não dobra o caixa", () => {
 test("salvar um serviço cria pelo id, e o segundo salvar atualiza no lugar", () => {
   const novo = { id: "sobrancelha", name: "Sobrancelha", minutes: 30, price: 1500 };
   const db = write(emptyDb(), [{ kind: "service", service: novo }]);
-  assert.equal(db.catalog.services.at(-1)?.id, "sobrancelha");
+  assert.equal(db.settings.services.at(-1)?.id, "sobrancelha");
 
   const caro = write(db, [{ kind: "service", service: { ...novo, price: 2000 } }]);
-  assert.equal(caro.catalog.services.length, db.catalog.services.length, "não duplicou");
-  assert.equal(caro.catalog.services.at(-1)?.price, 2000);
+  assert.equal(caro.settings.services.length, db.settings.services.length, "não duplicou");
+  assert.equal(caro.settings.services.at(-1)?.price, 2000);
 });
 
 test("um preço novo não muda o lugar do serviço na lista", () => {
   const db = emptyDb();
-  const corte = db.catalog.services[0]!;
+  const corte = db.settings.services[0]!;
   const depois = write(db, [{ kind: "service", service: { ...corte, price: 9900 } }]);
-  assert.equal(depois.catalog.services[0]?.id, corte.id, "o corte continua sendo o primeiro");
-  assert.equal(depois.catalog.services[0]?.price, 9900);
+  assert.equal(depois.settings.services[0]?.id, corte.id, "o corte continua sendo o primeiro");
+  assert.equal(depois.settings.services[0]?.price, 9900);
 });
 
 test("tirar da lista não mexe em comanda nenhuma", () => {
   const comandado = write(emptyDb(), [{ kind: "close", comanda: COMANDA }]);
   const db = write(comandado, [{ kind: "remove", from: "services", id: "corte" }]);
-  assert.ok(!db.catalog.services.some((s) => s.id === "corte"));
+  assert.ok(!db.settings.services.some((s) => s.id === "corte"));
   assert.deepEqual(db.comandas, comandado.comandas, "o que aconteceu, aconteceu");
 });
 

@@ -10,8 +10,8 @@ import type { Ctx, Session } from "../src/bot/session.ts";
 import type { Appointment } from "../src/shop/agenda.ts";
 import { appointmentId } from "../src/shop/agenda.ts";
 import type { Comanda } from "../src/shop/comanda.ts";
-import type { Catalog, PaymentId } from "../src/shop/shop.ts";
-import { SHOP, serviceById, withCatalog } from "../src/shop/shop.ts";
+import type { Settings, PaymentId } from "../src/shop/shop.ts";
+import { SHOP, serviceById, withSettings } from "../src/shop/shop.ts";
 import { hhmm, parseHhmm } from "../src/shop/time.ts";
 import type { Db } from "../src/store.ts";
 import { emptyDb, write } from "../src/store.ts";
@@ -140,10 +140,10 @@ function short(appointment: Appointment): string {
 }
 
 /** `servico corte 60 4500` e `produto bala 200`, na ordem da lista. */
-function catalogLines(catalog: Catalog): string[] {
+function catalogLines(settings: Settings): string[] {
   return [
-    ...catalog.services.map((s) => `servico ${s.id} ${s.minutes} ${s.price}`),
-    ...catalog.products.map((p) => `produto ${p.id} ${p.price}`),
+    ...settings.services.map((s) => `servico ${s.id} ${s.minutes} ${s.price}`),
+    ...settings.products.map((p) => `produto ${p.id} ${p.price}`),
   ];
 }
 
@@ -165,7 +165,7 @@ for (const file of readdirSync(join(HERE, "conversas")).sort()) {
         // A barbearia de cada turno é a constante com o catálogo do banco por
         // cima, como no simulador: uma conversa que muda um preço tem que ver o
         // preço novo no turno seguinte.
-        shop: withCatalog(SHOP, db.catalog),
+        shop: withSettings(SHOP, db.settings),
         agenda: db.agenda,
         comandas: db.comandas,
       };
@@ -189,7 +189,7 @@ for (const file of readdirSync(join(HERE, "conversas")).sort()) {
       "as comandas no fim da conversa",
     );
     if (fixture.catalogo.length > 0) {
-      assert.deepEqual(catalogLines(db.catalog), fixture.catalogo, "o catálogo no fim da conversa");
+      assert.deepEqual(catalogLines(db.settings), fixture.catalogo, "o catálogo no fim da conversa");
     }
   });
 }

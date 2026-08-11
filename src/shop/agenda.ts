@@ -10,7 +10,7 @@
 
 import type { Comanda } from "./comanda.ts";
 import type { Product, Service, ServiceId } from "./shop.ts";
-import type { Day, Minutes, Moment } from "./time.ts";
+import type { Day, Minutes, Moment, Weekday } from "./time.ts";
 import { compare } from "./time.ts";
 import type { Interval } from "./shop.ts";
 
@@ -44,7 +44,11 @@ export type Effect =
   // pelo id, como `book` faz com o agendamento.
   | { kind: "service"; service: Service }
   | { kind: "product"; product: Product }
-  | { kind: "remove"; from: "services" | "products"; id: string };
+  | { kind: "remove"; from: "services" | "products"; id: string }
+  // Os dias: o horário de um dia da semana, e as datas em que não se abre.
+  | { kind: "hours"; weekday: Weekday; intervals: Interval[] }
+  | { kind: "close_day"; day: Day }
+  | { kind: "open_day"; day: Day };
 
 /**
  * The id is derived from the booking, not generated.
