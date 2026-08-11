@@ -8,6 +8,8 @@
  */
 
 import type { Minutes } from "../shop/time.ts";
+import { lerDia } from "../text/datas.ts";
+import { lerDinheiro } from "../text/dinheiro.ts";
 import { lerHora, pareceHora } from "../text/horas.ts";
 import type { Choice, Ctx, Session } from "./session.ts";
 
@@ -170,6 +172,29 @@ export const nearestHour: Matcher = (input, session) => {
 export const anyHour: Matcher = (input) => {
   const [at] = lerHora(input.text);
   return at === undefined ? null : { number: at };
+};
+
+/**
+ * Um valor em dinheiro, em centavos, no `number` do match.
+ *
+ * Quem digita um valor está respondendo "quanto ficou", e nesse estado não há
+ * menu numerado para `45` disputar com a opção 45.
+ */
+export const money: Matcher = (input) => {
+  const centavos = lerDinheiro(input.text);
+  return centavos === null ? null : { number: centavos };
+};
+
+/**
+ * Um dia escrito à mão ("ontem", "10/08"), resolvido contra o relógio.
+ *
+ * O leitor devolve as leituras possíveis e aqui vale a primeira, que é a mais
+ * perto de hoje. Diferente de `choice("day")`, este não confere contra o que
+ * foi oferecido: quem pergunta é o barbeiro, e a agenda dele não tem lista.
+ */
+export const someDay: Matcher = (input, _session, ctx) => {
+  const [day] = lerDia(input.text, ctx.now.day);
+  return day === undefined ? null : { text: day, choice: { kind: "day", day } };
 };
 
 /** Anything the client typed, as long as it is not empty. */
