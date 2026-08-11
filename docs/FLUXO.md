@@ -132,11 +132,23 @@ porque ele é o humano.
 | estado | comportamento |
 | --- | --- |
 | `agenda` | O dia inteiro, um horário por linha, com a situação de cada um: `✓` fechado (com o valor), `✗` faltou, `•` ainda em aberto. **Segue** para o menu. |
-| `pedir_dia` | Aceita o dia escrito à mão: `hoje`, `ontem`, `10/08`, `10/08/2025`. Sem lista numerada, porque quem pergunta já conhece a agenda. |
+| `pedir_dia` | Aceita o dia escrito à mão: `hoje`, `ontem`, `quinta`, `quinta passada`, `10/08`, `10/08/2025`. Sem lista numerada, porque quem pergunta já conhece a agenda. |
 
-Uma data sem ano cai no ano mais perto de hoje, então `28/12` lido em janeiro é
-o dezembro que passou. O leitor é `src/text/datas.ts`, e ele devolve as leituras
-possíveis em ordem, como o leitor de horas.
+O leitor é `src/text/datas.ts`, e ele devolve as leituras possíveis em ordem,
+como o leitor de horas:
+
+| ele escreve | o bot entende |
+| --- | --- |
+| `hoje`, `ontem`, `anteontem`, `amanhã` | a conta a partir de hoje |
+| `quinta`, `quinta-feira`, `quinta que vem` | a próxima quinta; hoje, se hoje for quinta |
+| `quinta passada`, `última quinta` | a quinta que ficou para trás |
+| `10/08` | o ano mais perto de hoje |
+| `10/08/2025`, `2025-08-10` | o ano escrito |
+
+O nome do dia anda para a frente por padrão, porque quem fala assim está
+combinando alguma coisa, e volta quando a frase diz que é passado. Uma data sem
+ano cai no ano mais perto de hoje, então `28/12` lido em janeiro é o dezembro
+que passou.
 
 ## A comanda
 

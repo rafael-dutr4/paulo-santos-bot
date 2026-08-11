@@ -36,6 +36,31 @@ test("as palavras de todo dia são lidas contra o relógio", () => {
   assert.deepEqual(lerDia("amanha", HOJE), ["2026-08-12"]);
 });
 
+test("o nome do dia da semana anda para a frente", () => {
+  // HOJE é terça, 11/08.
+  assert.equal(lerDia("quinta", HOJE)[0], "2026-08-13");
+  assert.equal(lerDia("segunda", HOJE)[0], "2026-08-17", "a segunda que vem, não a que passou");
+  assert.equal(lerDia("quinta feira", HOJE)[0], "2026-08-13");
+  assert.equal(lerDia("quinta-feira", HOJE)[0], "2026-08-13");
+  assert.equal(lerDia("na proxima quinta", HOJE)[0], "2026-08-13");
+  assert.equal(lerDia("quinta que vem", HOJE)[0], "2026-08-13");
+});
+
+test("dito como passado, o dia da semana anda para trás", () => {
+  assert.equal(lerDia("quinta passada", HOJE)[0], "2026-08-06");
+  assert.equal(lerDia("ultima quinta", HOJE)[0], "2026-08-06");
+  assert.equal(lerDia("sexta passada", HOJE)[0], "2026-08-07");
+});
+
+test("o dia de hoje pelo nome é hoje, e o passado dele é a semana anterior", () => {
+  assert.equal(lerDia("terca", HOJE)[0], "2026-08-11");
+  assert.equal(lerDia("terca passada", HOJE)[0], "2026-08-04");
+});
+
+test("uma frase com um dia dentro não é um pedido de dia", () => {
+  assert.deepEqual(lerDia("marquei quinta com o cliente", HOJE), []);
+});
+
 test("uma data sem ano cai no ano mais perto de hoje", () => {
   assert.equal(lerDia("10/08", HOJE)[0], "2026-08-10");
   // Lida em janeiro, uma data de dezembro é o dezembro que passou.

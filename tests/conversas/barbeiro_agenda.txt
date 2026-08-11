@@ -23,7 +23,23 @@
 < agenda_do_dia
 < menu_barbeiro
 
-> amanhã
+# O nome do dia anda para a frente: hoje é terça, então "quarta" é amanhã.
+> 2
+< pedir_dia
+
+> quarta
+< agenda_do_dia
+< menu_barbeiro
+
+# Para trás quando a frase pede.
+> 2
+< pedir_dia
+
+> quarta passada
+< agenda_vazia
+< menu_barbeiro
+
+> quinta
 < nao_entendi
 < menu_barbeiro
 

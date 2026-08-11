@@ -324,7 +324,7 @@ export const PTBR: Record<MessageKey, Template> = {
 
   agenda_vazia: (w) => `Nada marcado em ${dia(str(w, "dia"))}.`,
 
-  pedir_dia: () => "Qual dia? (hoje, ontem, 10/08)",
+  pedir_dia: () => "Qual dia? (hoje, ontem, quinta, quinta passada, 10/08)",
 
   comandas_pendentes: (w) => ["Comandas em aberto:", "", str(w, "itens")].join("\n"),
   item_pendente: (w) =>
