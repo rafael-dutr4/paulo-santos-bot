@@ -57,7 +57,7 @@ src/sim/      the shell: the only place that touches the DOM
   seed.ts       encher o banco: o futuro do cliente e o histórico do barbeiro
   clock.ts      the injected now, and the time control
   panel.ts      the dev panel
-  tabs.ts       as três telas: conversa, estado, barbeiro
+  tabs.ts       as três telas: cliente, estado, barbeiro
   viewport.ts   o encaixe da tela quando o teclado do celular abre
 ```
 

@@ -36,6 +36,18 @@
 > voltar
 < dias_horarios
 
+# Tirar o almoço da terça é a opção zero: não é uma hora, então não disputa
+# com as horas.
+> 2
+< editar_dia_aberto
+
+> 3
+< mudar_almoco
+
+> 0
+< salvo
+< dias_horarios
+
 # O sábado (6) é direto, sem almoço. Dar um almoço a ele é uma hora e outra.
 > 6
 < editar_dia_aberto
@@ -60,8 +72,9 @@
 > voltar
 < dias_horarios
 
-# E a lista de datas fechadas, que é outra coisa: 8 é a linha "Dias fechados".
-> 8
+# E a lista de datas fechadas, que é outra coisa: com a linha de "todos os
+# dias" no meio, ela é a 9.
+> 9
 < dias_fechados
 
 > 4
@@ -70,3 +83,18 @@
 > 15/08
 < dia_fechado
 < dias_fechados
+
+> voltar
+< dias_horarios
+
+# Todos os dias de uma vez: a abertura muda em todo dia que abre, e o
+# fechamento de cada um continua o dele.
+> 8
+< editar_todos
+
+> 1
+< mudar_abertura
+
+> 08:00
+< salvo
+< dias_horarios

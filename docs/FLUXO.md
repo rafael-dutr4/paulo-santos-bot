@@ -246,10 +246,11 @@ depender de alguém recompilar.
 
 | estado | comportamento |
 | --- | --- |
-| `dias_horarios` | A semana, de segunda a domingo, com o horário de cada dia ou "fechado", e a linha das datas fechadas. |
+| `dias_horarios` | A semana, de segunda a domingo, com o horário de cada dia ou "fechado", mais a linha de todos os dias e a das datas fechadas. |
+| `editar_todos` | O mesmo editor apontado para a semana inteira. Cada resposta mexe num campo só e deixa o resto de cada dia como estava — mudar a abertura de todos não iguala os fechamentos, porque o sábado fecha mais cedo e isso quase nunca é o que se quis dizer. Dia fechado continua fechado. |
 | `editar_dia_semana` | Abre, fecha, almoço e "fechar neste dia da semana". Num dia fechado só existe "abrir", e abrir copia o expediente de um dia que já abre. |
-| `mudar_abertura` / `mudar_fechamento` / `mudar_almoco` → `almoco_ate` | Aceitam a hora como o cliente já dizia (`18:00`, `seis da tarde`), e `sem` tira o almoço. |
-| `horario_invalido` | Abrir depois de fechar não é horário, é engano. Nada é salvo. |
+| `mudar_abertura` / `mudar_fechamento` / `mudar_almoco` → `almoco_ate` | Aceitam a hora como o cliente já dizia (`18:00`, `seis da tarde`). Tirar o almoço é a opção `0`, porque não é uma hora — e ela só aparece nos dias que têm almoço. |
+| `horario_invalido` | Abrir depois de fechar não é horário, é engano. Nada é salvo — e com a semana inteira como alvo, um dia que não fecha derruba a mudança toda, porque salvar em cinco e pular o sexto em silêncio é pior do que recusar. |
 | `dias_fechados` | As datas de hoje para a frente. Escolher uma abre de novo; a última linha fecha um dia novo. |
 | `pedir_dia_fechado` | Lê a data como o resto do bot (`25/12`, `sexta`, `amanhã`). |
 | `dia_tem_gente` | Um dia com horário marcado não fecha. O bot mostra quem está marcado e manda cancelar ou remarcar antes — falar com essas pessoas não é trabalho de bot. |

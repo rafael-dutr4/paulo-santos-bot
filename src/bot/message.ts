@@ -100,7 +100,9 @@ export type MessageKey =
   // os dias e o expediente
   | "dias_horarios"
   | "linha_dia_semana"
+  | "item_todos_dias"
   | "item_fechados"
+  | "editar_todos"
   | "editar_dia_aberto"
   | "editar_dia_fechado"
   | "mudar_abertura"

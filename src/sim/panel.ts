@@ -78,6 +78,8 @@ function resumo(choice: Choice): string {
       return `semana ${choice.weekday}`;
     case "fechados":
       return "dias fechados";
+    case "todos":
+      return "todos os dias";
     case "item":
       return `item ${choice.index}`;
     case "payment":

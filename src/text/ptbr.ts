@@ -481,8 +481,21 @@ export const PTBR: Record<MessageKey, Template> = {
     return `${num(w, "n")} - ${nome} · ${fim}`;
   },
 
-  item_fechados: (w) =>
-    `${num(w, "n")} - Dias fechados (${num(w, "quantos")})`,
+  item_todos_dias: (w) => `${num(w, "n")} - Todos os dias de uma vez`,
+  item_fechados: (w) => `${num(w, "n")} - Dias fechados (${num(w, "quantos")})`,
+
+  editar_todos: (w) =>
+    [
+      "Todos os dias que abrem",
+      "",
+      "1 - Mudar a abertura",
+      "2 - Mudar o fechamento",
+      "3 - Mudar o almoço",
+      `${num(w, "voltar")} - Voltar`,
+      "",
+      "Cada resposta mexe só no que ela diz: mudar a abertura não muda o",
+      "fechamento de ninguém. Dia fechado continua fechado.",
+    ].join("\n"),
 
   editar_dia_aberto: (w) => {
     const almoco =
@@ -510,17 +523,53 @@ export const PTBR: Record<MessageKey, Template> = {
       `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
-  mudar_abertura: (w) => `Abre ${hora(num(w, "abre"))}. Passa a abrir que horas?\n\nOu voltar.`,
-  mudar_fechamento: (w) => `Fecha ${hora(num(w, "fecha"))}. Passa a fechar que horas?\n\nOu voltar.`,
-
-  mudar_almoco: (w) =>
+  mudar_abertura: (w) =>
     [
-      num(w, "tem") === 1
-        ? `Almoço das ${hora(num(w, "de"))} às ${hora(num(w, "ate"))}. Passa a começar que horas?`
-        : "Não tem almoço neste dia. Passa a começar que horas?",
+      num(w, "todos") === 1
+        ? "Todos os dias que abrem passam a abrir que horas?"
+        : `Abre ${hora(num(w, "abre"))}. Passa a abrir que horas?`,
       "",
-      "Responde a hora, sem para tirar o almoço, ou voltar.",
+      "Ou voltar.",
     ].join("\n"),
+
+  mudar_fechamento: (w) =>
+    [
+      num(w, "todos") === 1
+        ? "Todos os dias que abrem passam a fechar que horas?"
+        : `Fecha ${hora(num(w, "fecha"))}. Passa a fechar que horas?`,
+      "",
+      "Ou voltar.",
+    ].join("\n"),
+
+  /**
+   * A opção zero.
+   *
+   * Tirar o almoço não é uma hora, então não cabia na mesma frase da pergunta —
+   * e a frase que tentava explicar as duas coisas ("responde a hora, sem para
+   * tirar o almoço") só confundia. Vira uma linha numerada, como todo o resto
+   * do bot, e o zero é o número que sobra: nenhuma hora do dia é zero.
+   *
+   * Num dia que já não tem almoço a linha não aparece — ela desfaria algo que
+   * não existe.
+   */
+  mudar_almoco: (w) =>
+    num(w, "todos") === 1
+      ? [
+          "O almoço de todos os dias passa a começar que horas?",
+          "",
+          "0 - Sem pausa pra almoço",
+          "",
+          "Ou voltar.",
+        ].join("\n")
+      : num(w, "tem") === 1
+      ? [
+          `Almoço das ${hora(num(w, "de"))} às ${hora(num(w, "ate"))}. Passa a começar que horas?`,
+          "",
+          "0 - Sem pausa pra almoço",
+          "",
+          "Ou voltar.",
+        ].join("\n")
+      : ["Não tem almoço neste dia. Passa a começar que horas?", "", "Ou voltar."].join("\n"),
 
   almoco_ate: (w) => `Almoço a partir das ${hora(num(w, "de"))}. Até que horas?`,
 

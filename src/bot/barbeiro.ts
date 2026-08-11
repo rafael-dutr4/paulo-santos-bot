@@ -44,6 +44,7 @@ import {
   anything,
   choice,
   duration,
+  either,
   keyword,
   money,
   name as aName,
@@ -79,6 +80,7 @@ const VOLTAR_PRODUTO = 3;
 const VOLTAR_RELATORIO = 5;
 const VOLTAR_DIA_ABERTO = 5;
 const VOLTAR_DIA_FECHADO = 2;
+const VOLTAR_TODOS = 4;
 
 // --- lendo o rascunho ------------------------------------------------------
 
@@ -823,6 +825,7 @@ const diasHorarios: State = {
   enter: (session, ctx) => {
     const choices: Choice[] = [
       ...SEMANA.map((weekday) => ({ kind: "weekday", weekday }) as const),
+      { kind: "todos" },
       { kind: "fechados" },
     ];
     const itens: Message[] = SEMANA.map((weekday, i) =>
@@ -834,7 +837,11 @@ const diasHorarios: State = {
       }),
     );
     const lista = numbered(
-      [...itens, msg("item_fechados", { n: SEMANA.length + 1, quantos: proximasFolgas(ctx).length })],
+      [
+        ...itens,
+        msg("item_todos_dias", { n: SEMANA.length + 1 }),
+        msg("item_fechados", { n: SEMANA.length + 2, quantos: proximasFolgas(ctx).length }),
+      ],
       choices,
     );
     return {
@@ -853,7 +860,33 @@ const diasHorarios: State = {
       }),
       go: "editar_dia_semana",
     },
+    {
+      match: choice("todos"),
+      act: (session) => ({ session: { ...session, draft: { todos: true } } }),
+      go: "editar_todos",
+    },
     { match: choice("fechados"), go: "dias_fechados" },
+  ],
+};
+
+/**
+ * O mesmo editor, apontado para a semana inteira.
+ *
+ * Cada pergunta mexe num campo só e deixa o resto de cada dia como estava:
+ * mudar a abertura para todos não iguala os fechamentos, porque o sábado fecha
+ * mais cedo e isso quase nunca é o que se quis dizer.
+ *
+ * Dia fechado continua fechado. Abrir a semana toda por engano seria o tipo de
+ * estrago que o bot não pode fazer com uma tecla.
+ */
+const editarTodos: State = {
+  enter: says(msg("editar_todos", { voltar: VOLTAR_TODOS })),
+  back: "dias_horarios",
+  on: [
+    { match: option(1), go: "mudar_abertura" },
+    { match: option(2), go: "mudar_fechamento" },
+    { match: option(3), go: "mudar_almoco" },
+    { match: option(VOLTAR_TODOS), go: backFrom, exits: BACK_TARGETS },
   ],
 };
 
@@ -864,9 +897,18 @@ function intervalosEscritos(intervals: Interval[]): string {
 
 const weekdayOf = (session: Session): Weekday | undefined => session.draft.weekday;
 
-function expedienteDo(session: Session, ctx: Ctx): Expediente | null {
+/** Os dias que a próxima resposta vai mexer: um, ou todos os que abrem. */
+function alvos(session: Session, ctx: Ctx): Weekday[] {
   const weekday = weekdayOf(session);
-  return weekday === undefined ? null : expedienteOf(ctx.shop.hours[weekday]);
+  if (weekday !== undefined) return [weekday];
+  if (!session.draft.todos) return [];
+  return SEMANA.filter((dia) => ctx.shop.hours[dia].length > 0);
+}
+
+/** O expediente que a tela mostra: o do dia, ou o do primeiro que abre. */
+function expedienteDo(session: Session, ctx: Ctx): Expediente | null {
+  const [primeiro] = alvos(session, ctx);
+  return primeiro === undefined ? null : expedienteOf(ctx.shop.hours[primeiro]);
 }
 
 const diaAberto = (session: Session, ctx: Ctx): boolean => expedienteDo(session, ctx) !== null;
@@ -958,14 +1000,23 @@ function lembrar(session: Session, hora: number | undefined): Session {
   return hora === undefined ? session : { ...session, draft: { ...session.draft, hora } };
 }
 
-/** Guarda o expediente novo, se ele fizer sentido. */
+/**
+ * Guarda o expediente novo, se ele fizer sentido em todos os dias que ele toca.
+ *
+ * Com a semana inteira como alvo, um horário que não fecha em um dia derruba a
+ * mudança toda. Salvar em cinco dias e pular o sexto em silêncio é pior do que
+ * recusar: o barbeiro ia embora achando que tinha mudado.
+ */
 function salvarExpediente(session: Session, ctx: Ctx, mudanca: Partial<Expediente>): Effect[] {
-  const weekday = weekdayOf(session);
-  const atual = expedienteDo(session, ctx);
-  if (weekday === undefined || !atual) return [];
-  const novo = { ...atual, ...mudanca };
-  if (novo.abre >= novo.fecha) return [];
-  return [{ kind: "hours", weekday, intervals: intervalsOf(novo) }];
+  const efeitos: Effect[] = [];
+  for (const weekday of alvos(session, ctx)) {
+    const atual = expedienteOf(ctx.shop.hours[weekday]);
+    if (!atual) return [];
+    const novo = { ...atual, ...mudanca };
+    if (novo.abre >= novo.fecha) return [];
+    efeitos.push({ kind: "hours", weekday, intervals: intervalsOf(novo) });
+  }
+  return efeitos;
 }
 
 const valido = (session: Session, ctx: Ctx, mudanca: Partial<Expediente>): boolean =>
@@ -974,7 +1025,12 @@ const valido = (session: Session, ctx: Ctx, mudanca: Partial<Expediente>): boole
 const mudarAbertura: State = {
   enter: (session, ctx) => ({
     session,
-    messages: [msg("mudar_abertura", { abre: expedienteDo(session, ctx)?.abre ?? 0 })],
+    messages: [
+      msg("mudar_abertura", {
+        abre: expedienteDo(session, ctx)?.abre ?? 0,
+        todos: session.draft.todos ? 1 : 0,
+      }),
+    ],
   }),
   back: "dias_horarios",
   on: [
@@ -994,7 +1050,12 @@ const mudarAbertura: State = {
 const mudarFechamento: State = {
   enter: (session, ctx) => ({
     session,
-    messages: [msg("mudar_fechamento", { fecha: expedienteDo(session, ctx)?.fecha ?? 0 })],
+    messages: [
+      msg("mudar_fechamento", {
+        fecha: expedienteDo(session, ctx)?.fecha ?? 0,
+        todos: session.draft.todos ? 1 : 0,
+      }),
+    ],
   }),
   back: "dias_horarios",
   on: [
@@ -1020,6 +1081,7 @@ const mudarAlmoco: State = {
           de: expediente?.almoco?.start ?? 0,
           ate: expediente?.almoco?.end ?? 0,
           tem: expediente?.almoco ? 1 : 0,
+          todos: session.draft.todos ? 1 : 0,
         }),
       ],
     };
@@ -1028,18 +1090,23 @@ const mudarAlmoco: State = {
   on: [
     {
       // Sem almoço o dia é um intervalo só, que é como o sábado já funciona.
-      match: keyword("sem", "direto", "nenhum"),
-      act: (session, _match, ctx) => {
-        const weekday = weekdayOf(session);
-        const atual = expedienteDo(session, ctx);
-        if (weekday === undefined || !atual) return { session };
-        return {
-          session,
-          effects: [
-            { kind: "hours", weekday, intervals: intervalsOf({ abre: atual.abre, fecha: atual.fecha }) },
-          ],
-        };
-      },
+      // O zero é o número que sobra, porque nenhuma hora do dia é zero.
+      match: either(option(0), keyword("sem", "direto", "nenhum")),
+      act: (session, _match, ctx) => ({
+        session,
+        effects: alvos(session, ctx).flatMap((weekday) => {
+          const atual = expedienteOf(ctx.shop.hours[weekday]);
+          return atual
+            ? [
+                {
+                  kind: "hours" as const,
+                  weekday,
+                  intervals: intervalsOf({ abre: atual.abre, fecha: atual.fecha }),
+                },
+              ]
+            : [];
+        }),
+      }),
       go: "salvo",
     },
     {
@@ -1326,7 +1393,10 @@ export const BARBEIRO: Flow = {
       enter: (session) => ({
         session,
         messages: [msg("salvo")],
-        go: session.draft.weekday === undefined ? "catalogo" : "dias_horarios",
+        go:
+          session.draft.weekday === undefined && !session.draft.todos
+            ? "catalogo"
+            : "dias_horarios",
       }),
       exits: ["catalogo", "dias_horarios"],
     },
@@ -1334,6 +1404,7 @@ export const BARBEIRO: Flow = {
 
     dias_horarios: diasHorarios,
     editar_dia_semana: editarDiaSemana,
+    editar_todos: editarTodos,
     mudar_abertura: mudarAbertura,
     mudar_fechamento: mudarFechamento,
     mudar_almoco: mudarAlmoco,

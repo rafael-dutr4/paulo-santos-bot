@@ -93,13 +93,13 @@ function start(): void {
   const abas = tabs(el("abas"), (id) => {
     // Voltar para uma conversa depois de mexer no painel: o fim da lista é o
     // que interessa, e um `div` escondido não guarda o `scrollTop`.
-    if (id === "aba-conversa") cliente.scroll();
+    if (id === "aba-cliente") cliente.scroll();
     if (id === "aba-barbeiro") barbeiro.scroll();
   });
   // O teclado encolhe o `#app`, então o balão de baixo sai de vista se ninguém
   // rolar. Só as conversas se importam; o painel rola sozinho.
   fitToKeyboard(() => {
-    if (abas.current() === "aba-conversa") cliente.scroll();
+    if (abas.current() === "aba-cliente") cliente.scroll();
     if (abas.current() === "aba-barbeiro") barbeiro.scroll();
   });
 

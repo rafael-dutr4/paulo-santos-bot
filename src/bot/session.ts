@@ -37,6 +37,8 @@ export type Choice =
   /** A última linha de toda lista numerada. */
   | { kind: "voltar" }
   | { kind: "weekday"; weekday: Weekday }
+  /** A linha que mexe em todos os dias que abrem, de uma vez. */
+  | { kind: "todos" }
   /** A linha que leva à lista de datas fechadas. */
   | { kind: "fechados" }
   | { kind: "payment"; id: PaymentId };
@@ -91,6 +93,8 @@ export type Draft = {
   catalogo?: CatalogDraft;
   /** O dia da semana cujo expediente está sendo mexido. */
   weekday?: Weekday;
+  /** Ou todos os dias que abrem, de uma vez. */
+  todos?: boolean;
   /** O começo do almoço, enquanto o fim ainda não foi dito. */
   almoco?: Minutes;
   /** A última hora dita, para a transição conferir o que o efeito fez. */
