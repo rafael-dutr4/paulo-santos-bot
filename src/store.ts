@@ -20,14 +20,29 @@ import type { Session } from "./bot/session.ts";
 import type { Agenda, Effect } from "./shop/agenda.ts";
 import { apply as applyToAgenda } from "./shop/agenda.ts";
 import type { Comanda } from "./shop/comanda.ts";
+import type { Catalog } from "./shop/shop.ts";
+import { SHOP, catalogOf } from "./shop/shop.ts";
 
-/** Tudo que a barbearia guarda: o que foi prometido e o que aconteceu. */
+/**
+ * Tudo que a barbearia guarda: o que foi prometido, o que aconteceu e o que
+ * ela vende.
+ *
+ * O catálogo entrou aqui quando o barbeiro ganhou o direito de mexer nele pela
+ * conversa. Preço e tempo deixaram de ser dado de código no dia em que uma
+ * mensagem passou a mudá-los, e dado que muda em produção mora no banco.
+ */
 export type Db = {
   agenda: Agenda;
   comandas: Comanda[];
+  catalog: Catalog;
 };
 
-export const emptyDb = (): Db => ({ agenda: [], comandas: [] });
+/** Um banco novo começa com o catálogo com que a barbearia abriu as portas. */
+export const emptyDb = (catalog: Catalog = catalogOf(SHOP)): Db => ({
+  agenda: [],
+  comandas: [],
+  catalog,
+});
 
 export type Store = {
   /** A sessão daquele telefone, ou uma nova se ele nunca falou aqui. */
@@ -59,6 +74,33 @@ export function write(db: Db, effects: Effect[]): Db {
             effect.comanda,
           ],
         };
+      // Salvar cria ou atualiza, e quem já existia fica no lugar em que estava:
+      // a ordem da lista é a ordem em que o cliente lê o menu, e um aumento de
+      // preço não pode jogar o corte para o fim.
+      case "service":
+        return {
+          ...current,
+          catalog: { ...current.catalog, services: upsert(current.catalog.services, effect.service) },
+        };
+      case "product":
+        return {
+          ...current,
+          catalog: { ...current.catalog, products: upsert(current.catalog.products, effect.product) },
+        };
+      case "remove":
+        return {
+          ...current,
+          catalog: {
+            ...current.catalog,
+            [effect.from]: current.catalog[effect.from].filter((item) => item.id !== effect.id),
+          },
+        };
     }
   }, db);
+}
+
+function upsert<T extends { id: string }>(list: T[], item: T): T[] {
+  const onde = list.findIndex((atual) => atual.id === item.id);
+  if (onde === -1) return [...list, item];
+  return list.map((atual, i) => (i === onde ? item : atual));
 }

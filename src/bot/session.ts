@@ -32,6 +32,8 @@ export type Choice =
   | { kind: "appointment"; id: string }
   /** Uma linha da comanda aberta, pela posição: os itens não têm id. */
   | { kind: "item"; index: number }
+  /** A última linha da lista do catálogo: "novo serviço", "novo produto". */
+  | { kind: "novo"; what: CatalogKind }
   | { kind: "payment"; id: PaymentId };
 
 /**
@@ -50,6 +52,23 @@ export type ComandaDraft = {
   item?: number;
 };
 
+export type CatalogKind = "servico" | "produto";
+
+/**
+ * O item do catálogo que o barbeiro está mexendo.
+ *
+ * Serve para os dois casos: um item que já existe (tem `id`) e um que está
+ * sendo criado (tem só o que já foi respondido). O efeito só sai no fim, quando
+ * há o suficiente para montar um serviço ou um produto inteiro.
+ */
+export type CatalogDraft = {
+  what: CatalogKind;
+  id?: string;
+  name?: string;
+  price?: number;
+  minutes?: number;
+};
+
 /** What is being assembled during a booking. */
 export type Draft = {
   serviceId?: ServiceId;
@@ -64,6 +83,7 @@ export type Draft = {
   /** Quem está esperando o dia que foi pedido: a agenda ou o relatório. */
   asking?: "agenda" | "relatorio";
   comanda?: ComandaDraft;
+  catalogo?: CatalogDraft;
 };
 
 export type Session = {

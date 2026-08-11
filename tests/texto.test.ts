@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { lerDia } from "../src/text/datas.ts";
 import { lerDinheiro } from "../src/text/dinheiro.ts";
+import { lerDuracao } from "../src/text/duracao.ts";
 
 const HOJE = "2026-08-11"; // uma terça
 
@@ -27,6 +28,25 @@ test("o que não é valor não vira valor", () => {
   assert.equal(lerDinheiro("pix"), null);
   assert.equal(lerDinheiro(""), null);
   assert.equal(lerDinheiro("45 pila"), null);
+});
+
+test("a duração é lida como o barbeiro fala", () => {
+  assert.equal(lerDuracao("30"), 30);
+  assert.equal(lerDuracao("30 min"), 30);
+  assert.equal(lerDuracao("45 minutos"), 45);
+  assert.equal(lerDuracao("1h"), 60);
+  assert.equal(lerDuracao("1h30"), 90);
+  assert.equal(lerDuracao("1:30"), 90);
+  assert.equal(lerDuracao("meia hora"), 30);
+  assert.equal(lerDuracao("uma hora e meia"), 90);
+});
+
+test("duração e hora do dia são leitores diferentes de propósito", () => {
+  // `1h30` como hora do dia é uma e meia da madrugada; como duração é uma hora
+  // e meia de cadeira. Quem sabe qual dos dois é a pergunta é o fluxo.
+  assert.equal(lerDuracao("1h30"), 90);
+  assert.equal(lerDuracao("0"), null, "serviço de zero minuto não existe");
+  assert.equal(lerDuracao("amanha"), null);
 });
 
 test("as palavras de todo dia são lidas contra o relógio", () => {

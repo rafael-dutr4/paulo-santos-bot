@@ -91,6 +91,14 @@ const FORMAS: Record<string, string> = {
 
 const forma = (id: string): string => FORMAS[id] ?? id;
 
+/** 90 minutos vira `1h30`, e 30 vira `30 min`. */
+function tempo(minutos: Minutes): string {
+  if (minutos < 60) return `${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  return resto === 0 ? `${horas}h` : `${horas}h${String(resto).padStart(2, "0")}`;
+}
+
 function intervalos(list: Interval[]): string {
   return list.map((i) => `${hhmm(i.start)} às ${hhmm(i.end)}`).join(" e ");
 }
@@ -308,6 +316,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "2 - Agenda de outro dia",
       "3 - Fechar comanda",
       "4 - Relatório",
+      "5 - Serviços e produtos",
     ].join("\n"),
 
   despedida_barbeiro: () => "Fechado. Bom trabalho 💈",
@@ -387,6 +396,60 @@ export const PTBR: Record<MessageKey, Template> = {
     `Fechada: ${str(w, "nome")}, ${brl(num(w, "total"))} ✅`,
 
   comanda_faltou: (w) => `Anotado: ${str(w, "nome")} não veio.`,
+
+  // --- o catálogo ---------------------------------------------------------
+
+  catalogo: (w) =>
+    [
+      "✂️ Serviços",
+      str(w, "servicos"),
+      "",
+      "🧴 Produtos",
+      str(w, "produtos"),
+      "",
+      `${num(w, "novo_servico")} - Novo serviço`,
+      `${num(w, "novo_produto")} - Novo produto`,
+    ].join("\n"),
+
+  linha_catalogo_servico: (w) =>
+    `${num(w, "n")} - ${str(w, "nome")} · ${tempo(num(w, "minutos"))} · ${brl(num(w, "preco"))}`,
+  linha_catalogo_produto: (w) => `${num(w, "n")} - ${str(w, "nome")} · ${brl(num(w, "preco"))}`,
+
+  editar_servico: (w) =>
+    [
+      `${str(w, "nome")} · ${tempo(num(w, "minutos"))} · ${brl(num(w, "preco"))}`,
+      "",
+      "1 - Mudar o preço",
+      "2 - Mudar o tempo",
+      "3 - Tirar da lista",
+    ].join("\n"),
+
+  editar_produto: (w) =>
+    [
+      `${str(w, "nome")} · ${brl(num(w, "preco"))}`,
+      "",
+      "1 - Mudar o preço",
+      "2 - Tirar da lista",
+    ].join("\n"),
+
+  mudar_preco: (w) => `${str(w, "nome")} está ${brl(num(w, "preco"))}. Quanto vai ficar?`,
+  mudar_tempo: (w) =>
+    `${str(w, "nome")} ocupa ${tempo(num(w, "minutos"))}. Quanto tempo vai levar? (30, 1h, 1h30)`,
+
+  confirmar_tirar: (w) =>
+    [
+      `Tirar ${str(w, "nome")} da lista? (sim / não)`,
+      "",
+      "As comandas antigas não mudam: elas guardam o nome e o preço do dia.",
+    ].join("\n"),
+
+  novo_servico: () => "Qual o nome do serviço?",
+  novo_produto: () => "Qual o nome do produto?",
+  novo_preco: (w) => `Quanto custa ${str(w, "nome")}?`,
+  novo_tempo: (w) => `Quanto tempo leva ${str(w, "nome")}? (30, 1h, 1h30)`,
+
+  salvo: () => "Pronto ✅",
+  tirado: () => "Tirei da lista 👍",
 
   menu_relatorio: () =>
     ["Relatório de quando?", "", "1 - Hoje", "2 - Esta semana", "3 - Este mês", "4 - Outro dia"].join(

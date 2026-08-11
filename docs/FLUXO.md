@@ -131,6 +131,7 @@ porque ele é o humano.
 | 2 | `pedir_dia` e depois `agenda` |
 | 3 | `comandas`, ou `nada_a_fechar` |
 | 4 | `menu_relatorio` |
+| 5 | `catalogo` |
 
 ## A agenda
 
@@ -183,6 +184,38 @@ agendamento:
 
 Fechar duas vezes o mesmo horário substitui a comanda em vez de somar duas, pela
 mesma razão que `book` substitui pelo id.
+
+## Serviços e produtos
+
+O preço e o tempo mudam com o mercado, e produto novo chega toda semana. Por
+isso o catálogo é a única parte da barbearia que mora no banco e não em
+`shop.ts` — o resto (endereço, horário, formas de pagamento) muda de ano em ano
+e continua sendo dado de código. A casca monta o `Shop` de cada turno pondo o
+catálogo guardado por cima da constante, e nada acima disso percebe.
+
+| estado | comportamento |
+| --- | --- |
+| `catalogo` | Uma lista só, serviços e produtos, com "novo serviço" e "novo produto" como as duas últimas linhas — a mesma numeração de sempre. |
+| `editar_item` | Serviço: preço, tempo, tirar. Produto: preço, tirar. A opção 2 significa coisas diferentes nos dois, e é a transição que carrega a condição, não o destino. |
+| `mudar_preco` / `mudar_tempo` | Aceitam `50`, `R$ 50`, e `30`, `1h`, `1h30`, `meia hora`. |
+| `confirmar_tirar` | Tirar da lista não mexe em comanda nenhuma: elas guardam o nome e o preço do dia. |
+| `novo_nome` → `novo_preco` → `novo_tempo` | Produto para no preço; serviço ainda diz quanto tempo ocupa a cadeira. |
+
+O id de um item novo sai do nome: "Água de coco" vira `agua_de_coco`, sempre o
+mesmo para o mesmo nome, e ganha um número no fim se já existir um igual.
+Nenhum sorteio, como em toda id deste projeto.
+
+O que sai do motor:
+
+```
+{ kind: "service", service }   { kind: "product", product }
+{ kind: "remove", from: "services" | "products", id }
+```
+
+Um preço que o barbeiro muda na conversa dele aparece no menu do cliente no
+turno seguinte, sem ninguém avisar ninguém: as duas conversas leem o mesmo
+banco. E um aumento não reescreve o passado, porque a comanda copiou o nome e o
+preço no dia em que foi fechada.
 
 ## O relatório
 

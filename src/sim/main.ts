@@ -10,7 +10,7 @@
 
 import type { Effect } from "../shop/agenda.ts";
 import type { Shop } from "../shop/shop.ts";
-import { SHOP } from "../shop/shop.ts";
+import { SHOP, withCatalog } from "../shop/shop.ts";
 import type { Moment } from "../shop/time.ts";
 import type { Db } from "../store.ts";
 import type { Bubble } from "./chat.ts";
@@ -75,7 +75,8 @@ const barbeiro = wire(BARBER, {
  * cliente: o banco semeado é um banco que uma conversa saberia produzir.
  */
 function semear(quais: (shop: Shop, db: Db, now: Moment) => Effect[]): void {
-  db.apply(quais(SHOP, db.db(), readClock()));
+  const atual = db.db();
+  db.apply(quais(withCatalog(SHOP, atual.catalog), atual, readClock()));
   changed();
 }
 
@@ -130,8 +131,10 @@ function start(): void {
   el("reset-barbeiro").addEventListener("click", () => barbeiro.reset());
   el("seed").addEventListener("click", () => semear(futuro));
   el("seed-historico").addEventListener("click", () => semear(historico));
+  // Limpar é limpar a agenda e as comandas. O catálogo não é movimento, é a
+  // barbearia: apagá-lo aqui deixaria o bot sem nada para oferecer.
   el("clear-agenda").addEventListener("click", () => {
-    saved.db = { agenda: [], comandas: [] };
+    saved.db = { ...saved.db, agenda: [], comandas: [] };
     changed();
   });
   el("reset-tudo").addEventListener("click", () => {

@@ -1,0 +1,83 @@
+# O barbeiro mexe na tabela pela conversa: sobe o preço do corte, encurta o
+# pezinho, cria um produto novo e tira um da lista.
+# now: 2026-08-11 10:00
+# phone: 5511999990000
+
+> oi
+< saudacao_barbeiro
+< menu_barbeiro
+
+> 5
+< catalogo
+
+# 1 é o corte: preço novo.
+> 1
+< editar_servico
+
+> 1
+< mudar_preco
+
+> 50
+< salvo
+< catalogo
+
+# 4 é o pezinho: tempo novo, dito como o barbeiro fala.
+> 4
+< editar_servico
+
+> 2
+< mudar_tempo
+
+> 20 min
+< salvo
+< catalogo
+
+# 12 é "novo produto", a última linha da lista.
+> 12
+< novo_produto
+
+> Água de coco
+< novo_preco
+
+> 8
+< salvo
+< catalogo
+
+# 11 é "novo serviço": nome, preço e tempo.
+> 11
+< novo_servico
+
+> Sobrancelha
+< novo_preco
+
+> 15
+< novo_tempo
+
+> meia hora
+< salvo
+< catalogo
+
+# A bala saiu de linha. Tirar não mexe em comanda nenhuma.
+> 10
+< editar_produto
+
+> 2
+< confirmar_tirar
+
+> sim
+< tirado
+< catalogo
+
+# O catálogo no fim: corte a 50, pezinho de 20 minutos, sobrancelha nova, água
+# de coco nova e a bala fora.
+~ servico corte 60 5000
+~ servico barba 60 3500
+~ servico corte_barba 120 7000
+~ servico pezinho 20 2000
+~ servico sobrancelha 30 1500
+~ produto pomada 3000
+~ produto shampoo 4000
+~ produto oleo_barba 5000
+~ produto refrigerante 600
+~ produto cerveja 1000
+~ produto agua_de_coco 800

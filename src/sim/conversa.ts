@@ -16,7 +16,7 @@
 
 import { reply } from "../bot/flow.ts";
 import type { Ctx } from "../bot/session.ts";
-import { SHOP } from "../shop/shop.ts";
+import { SHOP, withCatalog } from "../shop/shop.ts";
 import { hhmm } from "../shop/time.ts";
 import type { Moment } from "../shop/time.ts";
 import { say } from "../text/say.ts";
@@ -57,9 +57,22 @@ const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 export function conversa(wiring: Wiring): Conversa {
   const { phone, chat, form, field, store, now, transcript, forget, changed } = wiring;
 
+  /**
+   * O mundo de um turno.
+   *
+   * A barbearia não é mais a constante: é a constante com o catálogo guardado
+   * por cima. Um preço que o barbeiro mudou na conversa dele aparece no menu do
+   * cliente no turno seguinte, sem ninguém avisar ninguém — as duas conversas
+   * leem o mesmo banco.
+   */
   function ctx(at: Moment): Ctx {
     const db = store.db();
-    return { now: at, shop: SHOP, agenda: db.agenda, comandas: db.comandas };
+    return {
+      now: at,
+      shop: withCatalog(SHOP, db.catalog),
+      agenda: db.agenda,
+      comandas: db.comandas,
+    };
   }
 
   async function send(text: string): Promise<void> {

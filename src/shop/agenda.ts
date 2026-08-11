@@ -9,7 +9,7 @@
  */
 
 import type { Comanda } from "./comanda.ts";
-import type { ServiceId } from "./shop.ts";
+import type { Product, Service, ServiceId } from "./shop.ts";
 import type { Day, Minutes, Moment } from "./time.ts";
 import { compare } from "./time.ts";
 import type { Interval } from "./shop.ts";
@@ -39,7 +39,12 @@ export type Agenda = Appointment[];
 export type Effect =
   | { kind: "book"; appointment: Appointment }
   | { kind: "cancel"; id: string }
-  | { kind: "close"; comanda: Comanda };
+  | { kind: "close"; comanda: Comanda }
+  // O catálogo, que o barbeiro edita pela conversa. Salvar cria ou atualiza,
+  // pelo id, como `book` faz com o agendamento.
+  | { kind: "service"; service: Service }
+  | { kind: "product"; product: Product }
+  | { kind: "remove"; from: "services" | "products"; id: string };
 
 /**
  * The id is derived from the booking, not generated.
@@ -61,7 +66,9 @@ export function apply(agenda: Agenda, effect: Effect): Agenda {
       return sorted([...agenda.filter((a) => a.id !== effect.appointment.id), effect.appointment]);
     case "cancel":
       return agenda.filter((a) => a.id !== effect.id);
-    case "close":
+    // Nada que não seja um agendamento mexe na agenda: fechar comanda, mudar um
+    // preço e tirar um produto da lista deixam o que está marcado onde está.
+    default:
       return agenda;
   }
 }

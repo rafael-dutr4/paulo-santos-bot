@@ -10,6 +10,7 @@
 import type { Minutes } from "../shop/time.ts";
 import { lerDia } from "../text/datas.ts";
 import { lerDinheiro } from "../text/dinheiro.ts";
+import { lerDuracao } from "../text/duracao.ts";
 import { lerHora, pareceHora } from "../text/horas.ts";
 import type { Choice, Ctx, Session } from "./session.ts";
 
@@ -184,6 +185,27 @@ export const money: Matcher = (input) => {
   const centavos = lerDinheiro(input.text);
   return centavos === null ? null : { number: centavos };
 };
+
+/** Uma duração, em minutos, no `number` do match. */
+export const duration: Matcher = (input) => {
+  const minutos = lerDuracao(input.text);
+  return minutos === null ? null : { number: minutos };
+};
+
+/**
+ * Só vale quando o fluxo diz que vale.
+ *
+ * Um estado que atende serviço e produto tem a mesma opção 2 significando duas
+ * coisas — mudar o tempo, que só serviço tem, ou tirar da lista. Em vez de um
+ * `if` dentro do destino, a condição entra na própria transição, e o estado
+ * continua sendo uma lista de "isto leva àquilo".
+ */
+export function when(
+  condition: (session: Session, ctx: Ctx) => boolean,
+  matcher: Matcher,
+): Matcher {
+  return (input, session, ctx) => (condition(session, ctx) ? matcher(input, session, ctx) : null);
+}
 
 /**
  * Um dia escrito à mão ("ontem", "10/08"), resolvido contra o relógio.

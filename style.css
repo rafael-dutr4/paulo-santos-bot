@@ -483,6 +483,7 @@ body {
 }
 
 #agenda,
+#catalogo,
 #comandas {
   margin: 0 0 10px;
   padding-left: 18px;
@@ -490,11 +491,13 @@ body {
 }
 
 #agenda li,
+#catalogo li,
 #comandas li {
   margin-bottom: 4px;
 }
 
 #agenda .vazio,
+#catalogo .vazio,
 #comandas .vazio {
   list-style: none;
   margin-left: -18px;

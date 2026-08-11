@@ -10,8 +10,8 @@ import type { Ctx, Session } from "../src/bot/session.ts";
 import type { Appointment } from "../src/shop/agenda.ts";
 import { appointmentId } from "../src/shop/agenda.ts";
 import type { Comanda } from "../src/shop/comanda.ts";
-import type { PaymentId } from "../src/shop/shop.ts";
-import { SHOP, serviceById } from "../src/shop/shop.ts";
+import type { Catalog, PaymentId } from "../src/shop/shop.ts";
+import { SHOP, serviceById, withCatalog } from "../src/shop/shop.ts";
 import { hhmm, parseHhmm } from "../src/shop/time.ts";
 import type { Db } from "../src/store.ts";
 import { emptyDb, write } from "../src/store.ts";
@@ -22,7 +22,8 @@ import { say } from "../src/text/say.ts";
  *
  * `>` is the client, `<` is a message key the bot has to emit in that order,
  * `=` is an appointment that must exist in the agenda when the conversation
- * ends and `$` is a comanda that must exist. Reading the fixture is reading the
+ * ends, `$` is a comanda that must exist e `~` é uma linha do catálogo — e o
+ * catálogo, quando a fixture fala dele, é conferido inteiro. Reading the fixture is reading the
  * flow, which is the point: a flow that cannot be reviewed by a human is a flow
  * nobody reviews.
  *
@@ -39,6 +40,7 @@ type Fixture = {
   steps: { client: string; expect: string[] }[];
   agenda: string[];
   comandas: string[];
+  catalogo: string[];
 };
 
 function parse(source: string): Fixture {
@@ -49,6 +51,7 @@ function parse(source: string): Fixture {
     steps: [],
     agenda: [],
     comandas: [],
+    catalogo: [],
   };
 
   for (const line of source.split("\n")) {
@@ -83,6 +86,9 @@ function parse(source: string): Fixture {
         break;
       case "$":
         fixture.comandas.push(body);
+        break;
+      case "~":
+        fixture.catalogo.push(body);
         break;
     }
   }
@@ -133,6 +139,14 @@ function short(appointment: Appointment): string {
   return `${appointment.day} ${hhmm(appointment.start)} ${appointment.serviceId}`;
 }
 
+/** `servico corte 60 4500` e `produto bala 200`, na ordem da lista. */
+function catalogLines(catalog: Catalog): string[] {
+  return [
+    ...catalog.services.map((s) => `servico ${s.id} ${s.minutes} ${s.price}`),
+    ...catalog.products.map((p) => `produto ${p.id} ${p.price}`),
+  ];
+}
+
 /** `2026-08-10 09:00 pix 4500`, ou `2026-08-10 09:00 faltou`. */
 function shortComanda(comanda: Comanda): string {
   const fim = comanda.status === "faltou" ? "faltou" : `${comanda.payment} ${comanda.total}`;
@@ -148,7 +162,10 @@ for (const file of readdirSync(join(HERE, "conversas")).sort()) {
     for (const [i, step] of fixture.steps.entries()) {
       const ctx: Ctx = {
         now: fixture.now,
-        shop: SHOP,
+        // A barbearia de cada turno é a constante com o catálogo do banco por
+        // cima, como no simulador: uma conversa que muda um preço tem que ver o
+        // preço novo no turno seguinte.
+        shop: withCatalog(SHOP, db.catalog),
         agenda: db.agenda,
         comandas: db.comandas,
       };
@@ -171,5 +188,8 @@ for (const file of readdirSync(join(HERE, "conversas")).sort()) {
       fixture.comandas,
       "as comandas no fim da conversa",
     );
+    if (fixture.catalogo.length > 0) {
+      assert.deepEqual(catalogLines(db.catalog), fixture.catalogo, "o catálogo no fim da conversa");
+    }
   });
 }

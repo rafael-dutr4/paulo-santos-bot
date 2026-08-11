@@ -27,14 +27,26 @@ import type { Comanda } from "../shop/comanda.ts";
 import { comandaById, itemFor, itemForProduct, itemsFor, pending, totalOf } from "../shop/comanda.ts";
 import type { Range } from "../shop/report.ts";
 import { dayRange, monthRange, report, weekRange } from "../shop/report.ts";
-import { productById, serviceById } from "../shop/shop.ts";
-import type { Day } from "../shop/time.ts";
+import { idFrom, productById, serviceById } from "../shop/shop.ts";
+import type { Day, Minutes } from "../shop/time.ts";
 import type { Enter, Flow, State } from "./engine.ts";
 import { says, silent } from "./engine.ts";
-import { anything, choice, keyword, money, no, option, someDay, yes } from "./match.ts";
+import {
+  anything,
+  choice,
+  duration,
+  keyword,
+  money,
+  name as aName,
+  no,
+  option,
+  someDay,
+  when,
+  yes,
+} from "./match.ts";
 import type { Message } from "./message.ts";
 import { msg } from "./message.ts";
-import type { ComandaDraft, Ctx, Session, StateName } from "./session.ts";
+import type { CatalogDraft, Choice, ComandaDraft, Ctx, Session, StateName } from "./session.ts";
 import { clearDraft } from "./session.ts";
 
 // --- lendo o rascunho ------------------------------------------------------
@@ -486,6 +498,291 @@ const comandaFaltou: State = {
   goto: "menu_barbeiro",
 };
 
+// --- o catálogo -----------------------------------------------------------
+
+/**
+ * O que a barbearia vende, e o único lugar do projeto onde o preço muda.
+ *
+ * A lista é uma só, com serviços e produtos, e as duas últimas linhas são
+ * "novo": é a mesma numeração de sempre, e por isso o barbeiro não precisa
+ * decorar um segundo jeito de responder. Quem separa uma coisa da outra é o
+ * tipo da oferta guardada na sessão, não o número que ele digitou.
+ */
+const catalogo: State = {
+  enter: (session, ctx) => {
+    const servicos = ctx.shop.services;
+    const produtos = ctx.shop.products;
+    const choices: Choice[] = [
+      ...servicos.map((s) => ({ kind: "service", id: s.id }) as const),
+      ...produtos.map((p) => ({ kind: "product", id: p.id }) as const),
+      { kind: "novo", what: "servico" },
+      { kind: "novo", what: "produto" },
+    ];
+
+    let n = 0;
+    return {
+      session: { ...session, choices, draft: {} },
+      messages: [
+        msg("catalogo", {
+          servicos: servicos.map((service) =>
+            msg("linha_catalogo_servico", {
+              n: ++n,
+              nome: service.name,
+              minutos: service.minutes,
+              preco: service.price,
+            }),
+          ),
+          produtos: produtos.map((product) =>
+            msg("linha_catalogo_produto", { n: ++n, nome: product.name, preco: product.price }),
+          ),
+          novo_servico: ++n,
+          novo_produto: ++n,
+        }),
+      ],
+    };
+  },
+  on: [
+    {
+      match: choice("service", "product"),
+      act: (session, match) => {
+        if (match.choice?.kind !== "service" && match.choice?.kind !== "product") return { session };
+        return {
+          session: {
+            ...session,
+            draft: {
+              catalogo: {
+                what: match.choice.kind === "service" ? "servico" : "produto",
+                id: match.choice.id,
+              },
+            },
+          },
+        };
+      },
+      go: "editar_item",
+    },
+    {
+      match: choice("novo"),
+      act: (session, match) => ({
+        session:
+          match.choice?.kind === "novo"
+            ? { ...session, draft: { catalogo: { what: match.choice.what } } }
+            : session,
+      }),
+      go: "novo_nome",
+    },
+  ],
+};
+
+function catalogDraft(session: Session): CatalogDraft | null {
+  return session.draft.catalogo ?? null;
+}
+
+const isServico = (session: Session): boolean => catalogDraft(session)?.what === "servico";
+const isProduto = (session: Session): boolean => catalogDraft(session)?.what === "produto";
+
+/** O item que está sendo editado, do jeito que ele está agora no catálogo. */
+function editando(session: Session, ctx: Ctx): { name: string; price: number; minutes?: Minutes } | null {
+  const draft = catalogDraft(session);
+  if (!draft?.id) return null;
+  if (draft.what === "servico") {
+    const service = serviceById(ctx.shop, draft.id);
+    return service ? { name: service.name, price: service.price, minutes: service.minutes } : null;
+  }
+  const product = productById(ctx.shop, draft.id);
+  return product ? { name: product.name, price: product.price } : null;
+}
+
+const editarItem: State = {
+  enter: (session, ctx) => {
+    const item = editando(session, ctx);
+    if (!item) return { session, messages: [], go: "catalogo" };
+    return {
+      session,
+      messages: [
+        msg(isServico(session) ? "editar_servico" : "editar_produto", {
+          nome: item.name,
+          preco: item.price,
+          minutos: item.minutes ?? 0,
+        }),
+      ],
+    };
+  },
+  exits: ["catalogo"],
+  back: "catalogo",
+  on: [
+    { match: option(1), go: "mudar_preco" },
+    { match: when(isServico, option(2)), go: "mudar_tempo" },
+    { match: when(isServico, option(3)), go: "confirmar_tirar" },
+    { match: when(isProduto, option(2)), go: "confirmar_tirar" },
+  ],
+};
+
+/**
+ * Salvar é sempre o mesmo efeito, com o que o rascunho tiver de novo por cima.
+ *
+ * Editar e criar acabam aqui do mesmo jeito: o que muda é se o item já existia,
+ * e isso o `write()` resolve pelo id.
+ */
+function salvar(session: Session, ctx: Ctx, mudanca: Partial<CatalogDraft>): Effect[] {
+  const draft = catalogDraft(session);
+  if (!draft) return [];
+  const atual = editando(session, ctx);
+  const name = mudanca.name ?? draft.name ?? atual?.name ?? "";
+  const price = mudanca.price ?? draft.price ?? atual?.price ?? 0;
+  if (name === "") return [];
+
+  if (draft.what === "produto") {
+    const id = draft.id ?? idFrom(name, ctx.shop.products.map((p) => p.id));
+    return [{ kind: "product", product: { id, name, price } }];
+  }
+
+  const minutes = mudanca.minutes ?? draft.minutes ?? atual?.minutes ?? 0;
+  if (minutes <= 0) return [];
+  const id = draft.id ?? idFrom(name, ctx.shop.services.map((s) => s.id));
+  return [{ kind: "service", service: { id, name, minutes, price } }];
+}
+
+const mudarPreco: State = {
+  enter: (session, ctx) => {
+    const item = editando(session, ctx);
+    return {
+      session,
+      messages: [msg("mudar_preco", { nome: item?.name ?? "", preco: item?.price ?? 0 })],
+    };
+  },
+  back: "catalogo",
+  on: [
+    {
+      match: money,
+      act: (session, match, ctx) => ({
+        session,
+        effects: salvar(session, ctx, { price: match.number ?? 0 }),
+      }),
+      go: "salvo",
+    },
+  ],
+};
+
+const mudarTempo: State = {
+  enter: (session, ctx) => {
+    const item = editando(session, ctx);
+    return {
+      session,
+      messages: [msg("mudar_tempo", { nome: item?.name ?? "", minutos: item?.minutes ?? 0 })],
+    };
+  },
+  back: "catalogo",
+  on: [
+    {
+      match: duration,
+      act: (session, match, ctx) => ({
+        session,
+        effects: salvar(session, ctx, { minutes: match.number ?? 0 }),
+      }),
+      go: "salvo",
+    },
+  ],
+};
+
+const confirmarTirar: State = {
+  enter: (session, ctx) => {
+    const item = editando(session, ctx);
+    if (!item) return { session, messages: [], go: "catalogo" };
+    return { session, messages: [msg("confirmar_tirar", { nome: item.name })] };
+  },
+  exits: ["catalogo"],
+  back: "catalogo",
+  on: [
+    {
+      match: yes,
+      act: (session) => {
+        const draft = catalogDraft(session);
+        if (!draft?.id) return { session };
+        return {
+          session,
+          effects: [
+            {
+              kind: "remove",
+              from: draft.what === "servico" ? "services" : "products",
+              id: draft.id,
+            },
+          ],
+        };
+      },
+      go: "tirado",
+    },
+    { match: no, go: "catalogo" },
+  ],
+};
+
+// --- um item novo ----------------------------------------------------------
+
+const novoNome: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg(isServico(session) ? "novo_servico" : "novo_produto")],
+  }),
+  back: "catalogo",
+  on: [
+    {
+      match: aName,
+      act: (session, match) => {
+        const draft = catalogDraft(session);
+        if (!draft || !match.text) return { session };
+        return { session: { ...session, draft: { catalogo: { ...draft, name: match.text } } } };
+      },
+      go: "novo_preco",
+    },
+  ],
+};
+
+const novoPreco: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("novo_preco", { nome: catalogDraft(session)?.name ?? "" })],
+  }),
+  back: "catalogo",
+  on: [
+    {
+      // Produto acaba aqui: ele não tem duração. Serviço ainda precisa dizer
+      // quanto tempo ocupa a cadeira, senão a agenda não sabe encaixá-lo.
+      match: money,
+      act: (session, match, ctx) => {
+        const draft = catalogDraft(session);
+        if (!draft) return { session };
+        const price = match.number ?? 0;
+        const guardado: Session = {
+          ...session,
+          draft: { catalogo: { ...draft, price } },
+        };
+        return draft.what === "produto"
+          ? { session: guardado, effects: salvar(session, ctx, { price }) }
+          : { session: guardado };
+      },
+      go: (session) => (isProduto(session) ? "salvo" : "novo_tempo"),
+      exits: ["salvo", "novo_tempo"],
+    },
+  ],
+};
+
+const novoTempo: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("novo_tempo", { nome: catalogDraft(session)?.name ?? "" })],
+  }),
+  back: "catalogo",
+  on: [
+    {
+      match: duration,
+      act: (session, match, ctx) => ({
+        session,
+        effects: salvar(session, ctx, { minutes: match.number ?? 0 }),
+      }),
+      go: "salvo",
+    },
+  ],
+};
+
 // --- o relatório -----------------------------------------------------------
 
 /**
@@ -570,11 +867,12 @@ const menuBarbeiro: State = {
     { match: option(2), go: "pedir_dia" },
     { match: option(3), go: "comandas" },
     { match: option(4), go: "menu_relatorio" },
+    { match: option(5), go: "catalogo" },
   ],
 };
 
 /** Para onde "voltar" leva do lado do barbeiro. */
-const BACK_TARGETS = ["menu_barbeiro", "comanda"];
+const BACK_TARGETS = ["menu_barbeiro", "comanda", "catalogo"];
 
 function backFrom(session: Session): StateName {
   return BARBEIRO.states[session.state]?.back ?? "menu_barbeiro";
@@ -611,6 +909,18 @@ export const BARBEIRO: Flow = {
     escolher_pagamento: escolherPagamento,
     comanda_fechada: comandaFechada,
     comanda_faltou: comandaFaltou,
+
+    catalogo,
+    editar_item: editarItem,
+    mudar_preco: mudarPreco,
+    mudar_tempo: mudarTempo,
+    confirmar_tirar: confirmarTirar,
+    novo_nome: novoNome,
+    novo_preco: novoPreco,
+    novo_tempo: novoTempo,
+    // Depois de mexer, a lista de novo: é ela que prova que mudou.
+    salvo: { enter: says(msg("salvo")), goto: "catalogo" },
+    tirado: { enter: says(msg("tirado")), goto: "catalogo" },
 
     menu_relatorio: menuRelatorio,
     relatorio_hoje: { enter: relatorioDe((_s, ctx) => dayRange(ctx.now.day)), goto: "menu_barbeiro" },

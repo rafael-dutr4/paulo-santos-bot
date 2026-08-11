@@ -19,6 +19,7 @@ This project exists as much for the learning as for the product. Explain the mec
 - **O português vive em `src/text/`, dos dois lados.** `ptbr.ts` escreve e `horas.ts` lê. Um leitor devolve todas as leituras possíveis, em ordem de probabilidade, e quem escolhe é o fluxo, que sabe o que está livre. Nenhum arquivo de `src/text/` sabe o que é barbearia.
 - **The flow is data.** The state tables in `src/bot/flow.ts` (o cliente) and `src/bot/barbeiro.ts` (o barbeiro) are objects, and `engine.ts` is an interpreter that knows nothing about barbershops. Anything specific to the barbershop goes in a table or in `src/shop/`, never in the interpreter. A third conversation would be a third file, not an `if`.
 - **The shell holds the world, behind a port.** `src/store.ts` says what a store has to do (four operations, one of them pure) and the simulator implements it over `localStorage`. A database later is another implementation of the same four, and nothing above it changes.
+- **O catálogo é dado do banco, não do código.** Preço, tempo, serviço e produto mudam pela conversa do barbeiro, então eles moram no `Db` e a casca monta o `Shop` de cada turno com `withCatalog(SHOP, db.catalog)`. `SHOP` é com o que a barbearia abre as portas, e o resto dele (endereço, horário, formas de pagamento) continua sendo código.
 - **Time is wall clock time, not `Date`.** A day is `"2026-08-11"` and an hour is minutes since midnight. `Date` appears once, in `src/sim/clock.ts`, to read the browser clock.
 - **The DOM lives in `src/sim/` and nowhere else.** Everything above it runs in Node with no shims.
 
@@ -34,11 +35,11 @@ src/bot/      the interpreter, pure
   barbeiro.ts   the barber state table: agenda, comanda, relatório
   engine.ts     run(), the interpreter loop
 src/shop/     the domain, pure
-  shop.ts       services, prices, hours, address, os telefones do barbeiro
+  shop.ts       hours, address, os telefones do barbeiro, e o catálogo inicial
   time.ts       Day, Minutes, Moment, days-from-civil arithmetic
   slots.ts      freeSlots(), the interval subtraction
   agenda.ts     Appointment, Effect, and applying an Effect to an agenda
-  comanda.ts    Comanda, os itens, e as pendências (agenda menos comandas)
+  comanda.ts    Comanda, os itens (serviço ou produto), e as pendências
   report.ts     report(), e os intervalos: dia, semana, mês
 src/text/     a língua do projeto: um lado escreve, o outro lê
   ptbr.ts       every sentence the client and the barber read
@@ -46,6 +47,7 @@ src/text/     a língua do projeto: um lado escreve, o outro lê
   horas.ts      lê a hora em português ("duas e meia" -> 14:30 ou 02:30)
   datas.ts      lê o dia ("ontem", "10/08"), na ordem mais perto de hoje
   dinheiro.ts   lê o valor ("45", "R$ 45,50") em centavos
+  duracao.ts    lê a duração ("1h30", "meia hora") em minutos
 src/sim/      the shell: the only place that touches the DOM
   main.ts       wiring
   conversa.ts   um turno: mensagem -> reply -> guardar, aplicar, responder

@@ -70,6 +70,8 @@ function resumo(choice: Choice): string {
     case "product":
     case "appointment":
       return choice.id;
+    case "novo":
+      return `novo ${choice.what}`;
     case "item":
       return `item ${choice.index}`;
     case "payment":
@@ -78,7 +80,7 @@ function resumo(choice: Choice): string {
 }
 
 /**
- * O banco inteiro na tela: a agenda e as comandas.
+ * O banco inteiro na tela: a agenda, o catálogo e as comandas.
  *
  * São as duas metades do mesmo dia. A agenda é a promessa, e a comanda é o que
  * aconteceu com ela — por isso ficam uma embaixo da outra, e não em telas
@@ -91,6 +93,12 @@ export function showAgenda(db: Db): void {
       service?.name ?? appointment.serviceId
     } · ${appointment.clientName}`;
   });
+
+  fill("catalogo", "catálogo vazio", [...db.catalog.services, ...db.catalog.products], (item) =>
+    "minutes" in item
+      ? `${item.name} · ${item.minutes} min · ${brl(item.price)}`
+      : `${item.name} · ${brl(item.price)}`,
+  );
 
   fill("comandas", "nenhuma comanda fechada", db.comandas, (comanda) => {
     const fim =

@@ -134,6 +134,52 @@ export const SHOP: Shop = {
   payments: ["dinheiro", "pix", "debito", "credito"],
 };
 
+/**
+ * A parte da barbearia que o barbeiro edita pela conversa.
+ *
+ * Preço e tempo mudam com o mercado, e produto novo chega toda semana. O resto
+ * — endereço, horário de funcionamento, formas de pagamento — muda de ano em
+ * ano e continua sendo dado de código.
+ *
+ * Por isso o catálogo mora no banco e não aqui: `SHOP` guarda com o que a
+ * barbearia começa, e a casca monta o `Shop` de cada turno pondo por cima o que
+ * está guardado. Nada acima disso percebe a diferença, porque o fluxo sempre
+ * leu `ctx.shop.services` em vez de importar a constante.
+ */
+export type Catalog = { services: Service[]; products: Product[] };
+
+export function catalogOf(shop: Shop): Catalog {
+  return { services: shop.services, products: shop.products };
+}
+
+export function withCatalog(shop: Shop, catalog: Catalog): Shop {
+  return { ...shop, services: catalog.services, products: catalog.products };
+}
+
+/**
+ * O id de um item novo, tirado do nome.
+ *
+ * Sem sorteio e sem contador: "Óleo para barba" vira `oleo_para_barba`, e o
+ * mesmo nome dá sempre o mesmo id. Se já existir um igual, ganha um número no
+ * fim — dois produtos com o mesmo nome são raros, mas um id repetido somaria os
+ * dois no relatório.
+ */
+export function idFrom(name: string, existing: string[]): string {
+  const base =
+    name
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "item";
+
+  if (!existing.includes(base)) return base;
+  for (let n = 2; ; n++) {
+    const tentativa = `${base}_${n}`;
+    if (!existing.includes(tentativa)) return tentativa;
+  }
+}
+
 export function serviceById(shop: Shop, id: ServiceId): Service | null {
   return shop.services.find((service) => service.id === id) ?? null;
 }

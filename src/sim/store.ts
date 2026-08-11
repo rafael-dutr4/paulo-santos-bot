@@ -33,7 +33,7 @@ const KEY = "paulo-santos-bot";
  * melhor do que um erro no meio do primeiro "oi". Subir este número descarta o
  * que estava salvo.
  */
-const VERSION = 3;
+const VERSION = 4;
 
 /** O cliente do simulador é sempre o mesmo número. */
 export const PHONE = "5511911111111";
