@@ -4,22 +4,30 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { reply } from "../src/bot/flow.ts";
+import { flowFor, reply } from "../src/bot/flow.ts";
 import { newSession } from "../src/bot/session.ts";
 import type { Ctx, Session } from "../src/bot/session.ts";
-import type { Agenda, Appointment } from "../src/shop/agenda.ts";
-import { appointmentId, applyAll } from "../src/shop/agenda.ts";
+import type { Appointment } from "../src/shop/agenda.ts";
+import { appointmentId } from "../src/shop/agenda.ts";
+import type { Comanda } from "../src/shop/comanda.ts";
+import type { PaymentId } from "../src/shop/shop.ts";
 import { SHOP, serviceById } from "../src/shop/shop.ts";
 import { hhmm, parseHhmm } from "../src/shop/time.ts";
+import type { Db } from "../src/store.ts";
+import { emptyDb, write } from "../src/store.ts";
 import { say } from "../src/text/say.ts";
 
 /**
  * A conversation is a fixture, not a test written in TypeScript.
  *
  * `>` is the client, `<` is a message key the bot has to emit in that order,
- * and `=` is an appointment that must exist in the agenda when the conversation
- * ends. Reading the fixture is reading the flow, which is the point: a flow
- * that cannot be reviewed by a human is a flow nobody reviews.
+ * `=` is an appointment that must exist in the agenda when the conversation
+ * ends and `$` is a comanda that must exist. Reading the fixture is reading the
+ * flow, which is the point: a flow that cannot be reviewed by a human is a flow
+ * nobody reviews.
+ *
+ * `# phone` é o que escolhe a tabela: um telefone que está em `SHOP.barbers`
+ * conversa como barbeiro, e a mesma sintaxe de fixture serve aos dois lados.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -27,18 +35,20 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 type Fixture = {
   now: { day: string; at: number };
   phone: string;
-  seed: Agenda;
+  seed: Db;
   steps: { client: string; expect: string[] }[];
   agenda: string[];
+  comandas: string[];
 };
 
 function parse(source: string): Fixture {
   const fixture: Fixture = {
     now: { day: "2026-08-10", at: 10 * 60 },
     phone: "5511911111111",
-    seed: [],
+    seed: emptyDb(),
     steps: [],
     agenda: [],
+    comandas: [],
   };
 
   for (const line of source.split("\n")) {
@@ -56,7 +66,9 @@ function parse(source: string): Fixture {
         } else if (directive === "phone") {
           fixture.phone = value;
         } else if (directive === "agenda") {
-          fixture.seed.push(appointmentFrom(value));
+          fixture.seed.agenda.push(appointmentFrom(value));
+        } else if (directive === "comanda") {
+          fixture.seed.comandas.push(comandaFrom(value));
         }
         break;
       }
@@ -68,6 +80,9 @@ function parse(source: string): Fixture {
         break;
       case "=":
         fixture.agenda.push(body);
+        break;
+      case "$":
+        fixture.comandas.push(body);
         break;
     }
   }
@@ -91,21 +106,53 @@ function appointmentFrom(value: string): Appointment {
   };
 }
 
+/** `2026-08-10 09:00 corte pix 4500 5511922222222 Zé` */
+function comandaFrom(value: string): Comanda {
+  const [day, hour, serviceId, pagamento, preco, phone, ...name] = value.split(/\s+/);
+  const start = parseHhmm(hour!)!;
+  const owner = phone ?? "5511922222222";
+  const total = Number(preco ?? 0);
+  const faltou = pagamento === "faltou";
+  return {
+    id: appointmentId(owner, day!, start),
+    day: day!,
+    start,
+    phone: owner,
+    clientName: name.join(" ") || "Cliente",
+    status: faltou ? "faltou" : "feito",
+    itens: faltou ? [] : [{ serviceId: serviceId!, price: total }],
+    total: faltou ? 0 : total,
+    ...(faltou ? {} : { payment: pagamento as PaymentId }),
+    closedAt: { day: day!, at: start },
+  };
+}
+
 function short(appointment: Appointment): string {
   return `${appointment.day} ${hhmm(appointment.start)} ${appointment.serviceId}`;
+}
+
+/** `2026-08-10 09:00 pix 4500`, ou `2026-08-10 09:00 faltou`. */
+function shortComanda(comanda: Comanda): string {
+  const fim = comanda.status === "faltou" ? "faltou" : `${comanda.payment} ${comanda.total}`;
+  return `${comanda.day} ${hhmm(comanda.start)} ${fim}`;
 }
 
 for (const file of readdirSync(join(HERE, "conversas")).sort()) {
   test(`conversa: ${file.replace(".txt", "")}`, () => {
     const fixture = parse(readFileSync(join(HERE, "conversas", file), "utf8"));
-    let session: Session = { ...newSession(fixture.phone) };
-    let agenda = fixture.seed;
+    let session: Session = newSession(fixture.phone, flowFor(SHOP, fixture.phone).start);
+    let db = fixture.seed;
 
     for (const [i, step] of fixture.steps.entries()) {
-      const ctx: Ctx = { now: fixture.now, shop: SHOP, agenda };
+      const ctx: Ctx = {
+        now: fixture.now,
+        shop: SHOP,
+        agenda: db.agenda,
+        comandas: db.comandas,
+      };
       const outcome = reply(session, step.client, ctx);
       session = outcome.session;
-      agenda = applyAll(agenda, outcome.effects);
+      db = write(db, outcome.effects);
 
       const said = outcome.messages.map((m) => m.key);
       assert.deepEqual(said, step.expect, `passo ${i + 1}, o cliente disse "${step.client}"`);
@@ -116,6 +163,11 @@ for (const file of readdirSync(join(HERE, "conversas")).sort()) {
       }
     }
 
-    assert.deepEqual(agenda.map(short), fixture.agenda, "a agenda no fim da conversa");
+    assert.deepEqual(db.agenda.map(short), fixture.agenda, "a agenda no fim da conversa");
+    assert.deepEqual(
+      db.comandas.map(shortComanda),
+      fixture.comandas,
+      "as comandas no fim da conversa",
+    );
   });
 }

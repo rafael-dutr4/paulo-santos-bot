@@ -53,7 +53,36 @@ export type MessageKey =
   | "o_que_fazer"
   | "confirmar_cancelamento"
   | "cancelado"
-  | "cancelamento_abortado";
+  | "cancelamento_abortado"
+  // o barbeiro
+  | "saudacao_barbeiro"
+  | "menu_barbeiro"
+  | "despedida_barbeiro"
+  | "agenda_do_dia"
+  | "item_agenda"
+  | "agenda_vazia"
+  | "pedir_dia"
+  // comandas
+  | "comandas_pendentes"
+  | "item_pendente"
+  | "nada_a_fechar"
+  | "compareceu"
+  | "comanda"
+  | "item_comanda"
+  | "servico_extra"
+  | "escolher_item"
+  | "item_para_corrigir"
+  | "pedir_valor"
+  | "escolher_pagamento"
+  | "item_pagamento"
+  | "comanda_fechada"
+  | "comanda_faltou"
+  // relatório
+  | "menu_relatorio"
+  | "relatorio"
+  | "linha_servico"
+  | "linha_pagamento"
+  | "relatorio_vazio";
 
 export type Param = string | number | Message | Message[];
 export type Params = Record<string, Param>;

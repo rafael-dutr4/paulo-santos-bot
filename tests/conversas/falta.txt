@@ -1,0 +1,23 @@
+# O cliente não veio. A falta também fecha a comanda: sem isso o horário fica
+# pendente para sempre e o relatório não sabe contar quem faltou.
+# now: 2026-08-11 10:00
+# phone: 5511999990000
+# agenda: 2026-08-11 09:00 corte 5511922222222 Zé
+
+> oi
+< saudacao_barbeiro
+< menu_barbeiro
+
+> 3
+< comandas_pendentes
+
+> 1
+< compareceu
+
+> não
+< comanda_faltou
+< menu_barbeiro
+
+= 2026-08-11 09:00 corte
+
+$ 2026-08-11 09:00 faltou

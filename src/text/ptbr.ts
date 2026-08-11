@@ -70,6 +70,27 @@ export function hora(at: Minutes): string {
   return hhmm(at);
 }
 
+/** `2026-08-11` vira `11/08`, sem o dia da semana, para caber numa faixa. */
+function curto(day: Day): string {
+  if (!isDay(day)) return day;
+  const { month, day: d } = parts(day);
+  return `${String(d).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+}
+
+/** Um intervalo de um dia é um dia; de vários, uma faixa. */
+function periodoEscrito(de: Day, ate: Day): string {
+  return de === ate ? dia(de) : `${curto(de)} a ${curto(ate)}`;
+}
+
+const FORMAS: Record<string, string> = {
+  dinheiro: "Dinheiro",
+  pix: "Pix",
+  debito: "Débito",
+  credito: "Crédito",
+};
+
+const forma = (id: string): string => FORMAS[id] ?? id;
+
 function intervalos(list: Interval[]): string {
   return list.map((i) => `${hhmm(i.start)} às ${hhmm(i.end)}`).join(" e ");
 }
@@ -261,4 +282,123 @@ export const PTBR: Record<MessageKey, Template> = {
 
   cancelado: () => "Cancelado. Quando quiser marcar de novo, é só chamar 👍",
   cancelamento_abortado: () => "Beleza, seu horário continua marcado.",
+
+  // --- o barbeiro ---------------------------------------------------------
+  //
+  // O barbeiro lê no intervalo entre dois cortes, com o celular numa mão só.
+  // Então aqui as frases são mais curtas que as do cliente, o número vem antes
+  // do nome, e nada é explicado duas vezes.
+
+  saudacao_barbeiro: () => `Oi, ${SHOP.barber} 💈`,
+
+  menu_barbeiro: () =>
+    [
+      "1 - Agenda de hoje",
+      "2 - Agenda de outro dia",
+      "3 - Fechar comanda",
+      "4 - Relatório",
+    ].join("\n"),
+
+  despedida_barbeiro: () => "Fechado. Bom trabalho 💈",
+
+  agenda_do_dia: (w) => [`📋 ${dia(str(w, "dia"))}`, "", str(w, "itens")].join("\n"),
+
+  /**
+   * Uma linha da agenda, com a situação no fim.
+   *
+   * O símbolo carrega o que uma palavra carregaria, e o barbeiro corre a
+   * coluna com o olho em vez de ler linha por linha: `✓` já fechou, `✗` faltou,
+   * `•` ainda está aberto e vai aparecer na lista de comandas.
+   */
+  item_agenda: (w) => {
+    const situacao = str(w, "situacao");
+    const marca = situacao === "feito" ? "✓" : situacao === "faltou" ? "✗" : "•";
+    const fim =
+      situacao === "feito"
+        ? ` (${brl(num(w, "total"))})`
+        : situacao === "faltou"
+          ? " (faltou)"
+          : "";
+    return `${marca} ${hora(num(w, "hora"))} ${str(w, "nome")} · ${str(w, "servico")}${fim}`;
+  },
+
+  agenda_vazia: (w) => `Nada marcado em ${dia(str(w, "dia"))}.`,
+
+  pedir_dia: () => "Qual dia? (hoje, ontem, 10/08)",
+
+  comandas_pendentes: (w) => ["Comandas em aberto:", "", str(w, "itens")].join("\n"),
+  item_pendente: (w) =>
+    `${num(w, "n")} - ${dia(str(w, "dia"))} ${hora(num(w, "hora"))} · ${str(w, "nome")} · ${str(w, "servico")}`,
+
+  nada_a_fechar: () => "Nenhuma comanda em aberto 👍",
+
+  compareceu: (w) =>
+    [
+      `${str(w, "nome")} · ${str(w, "servico")} · ${dia(str(w, "dia"))} às ${hora(num(w, "hora"))}`,
+      "",
+      "O cliente veio? (sim / não)",
+    ].join("\n"),
+
+  comanda: (w) =>
+    [
+      `🧾 ${str(w, "nome")} · ${dia(str(w, "dia"))} às ${hora(num(w, "hora"))}`,
+      "",
+      str(w, "itens"),
+      `Total: ${brl(num(w, "total"))}`,
+      "",
+      "1 - Acrescentar serviço",
+      "2 - Corrigir um valor",
+      "3 - Ir para o pagamento",
+    ].join("\n"),
+
+  item_comanda: (w) => `· ${str(w, "servico")} — ${brl(num(w, "valor"))}`,
+
+  servico_extra: (w) => ["O que mais saiu?", "", str(w, "itens")].join("\n"),
+
+  escolher_item: (w) => ["Qual valor?", "", str(w, "itens")].join("\n"),
+  item_para_corrigir: (w) =>
+    `${num(w, "n")} - ${str(w, "servico")} — ${brl(num(w, "valor"))}`,
+
+  pedir_valor: (w) =>
+    [
+      `${str(w, "servico")} está ${brl(num(w, "valor"))}. Quanto ficou?`,
+      "",
+      "Responde o valor (45, 45,50) ou tirar para remover.",
+    ].join("\n"),
+
+  escolher_pagamento: (w) =>
+    [`Total: ${brl(num(w, "total"))}`, "", "Como pagou?", "", str(w, "itens")].join("\n"),
+  item_pagamento: (w) => `${num(w, "n")} - ${forma(str(w, "forma"))}`,
+
+  comanda_fechada: (w) =>
+    `Fechada: ${str(w, "nome")}, ${brl(num(w, "total"))} ✅`,
+
+  comanda_faltou: (w) => `Anotado: ${str(w, "nome")} não veio.`,
+
+  menu_relatorio: () =>
+    ["Relatório de quando?", "", "1 - Hoje", "2 - Esta semana", "3 - Este mês", "4 - Outro dia"].join(
+      "\n",
+    ),
+
+  relatorio: (w) =>
+    [
+      `📊 ${periodoEscrito(str(w, "de"), str(w, "ate"))}`,
+      "",
+      `Faturado: ${brl(num(w, "faturado"))} em ${num(w, "atendimentos")} atendimento${num(w, "atendimentos") === 1 ? "" : "s"}`,
+      "",
+      "Por serviço",
+      str(w, "servicos"),
+      "",
+      "Pagamento",
+      str(w, "pagamentos"),
+      "",
+      `Faltas: ${num(w, "faltas")}`,
+    ].join("\n"),
+
+  linha_servico: (w) =>
+    `· ${str(w, "servico")} ${num(w, "quantidade")}× — ${brl(num(w, "total"))}`,
+  linha_pagamento: (w) => `· ${forma(str(w, "forma"))} — ${brl(num(w, "total"))}`,
+
+  relatorio_vazio: (w) =>
+    `Nenhuma comanda fechada em ${periodoEscrito(str(w, "de"), str(w, "ate"))}.`,
 };

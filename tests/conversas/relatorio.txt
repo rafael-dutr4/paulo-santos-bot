@@ -1,0 +1,39 @@
+# O relatório da semana, com o que já está fechado. A semana da barbearia vai
+# de segunda a domingo, então 2026-08-11 (terça) puxa desde 2026-08-10.
+# now: 2026-08-11 18:00
+# phone: 5511999990000
+# comanda: 2026-08-10 09:00 corte pix 4500 5511922222222 Zé
+# comanda: 2026-08-11 09:00 corte_barba dinheiro 7000 5511933333333 Marcos
+# comanda: 2026-08-11 14:00 corte faltou 0 5511944444444 João
+
+> oi
+< saudacao_barbeiro
+< menu_barbeiro
+
+> 4
+< menu_relatorio
+
+> 1
+< relatorio
+< menu_barbeiro
+
+> 4
+< menu_relatorio
+
+> 2
+< relatorio
+< menu_barbeiro
+
+> 4
+< menu_relatorio
+
+> 4
+< pedir_dia
+
+> ontem
+< relatorio
+< menu_barbeiro
+
+$ 2026-08-10 09:00 pix 4500
+$ 2026-08-11 09:00 dinheiro 7000
+$ 2026-08-11 14:00 faltou

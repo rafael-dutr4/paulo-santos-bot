@@ -7,7 +7,8 @@
  */
 
 import type { Agenda } from "../shop/agenda.ts";
-import type { ServiceId, Shop } from "../shop/shop.ts";
+import type { Comanda, Item } from "../shop/comanda.ts";
+import type { PaymentId, ServiceId, Shop } from "../shop/shop.ts";
 import type { Day, Minutes, Moment } from "../shop/time.ts";
 
 export type StateName = string;
@@ -27,7 +28,26 @@ export type Choice =
   | { kind: "service"; id: ServiceId }
   | { kind: "day"; day: Day }
   | { kind: "slot"; start: Minutes }
-  | { kind: "appointment"; id: string };
+  | { kind: "appointment"; id: string }
+  /** Uma linha da comanda aberta, pela posição: os itens não têm id. */
+  | { kind: "item"; index: number }
+  | { kind: "payment"; id: PaymentId };
+
+/**
+ * A comanda que o barbeiro está fechando.
+ *
+ * Ela mora no rascunho, e não no banco, porque enquanto o barbeiro acrescenta
+ * um pezinho e corrige um valor nada disso aconteceu ainda: a comanda só
+ * existe quando ele escolhe a forma de pagamento, e aí sai como um `Effect`.
+ * Desistir no meio é fechar a conversa, e não apagar linha nenhuma.
+ */
+export type ComandaDraft = {
+  /** O agendamento que está sendo fechado. */
+  id: string;
+  itens: Item[];
+  /** A linha cujo valor está sendo corrigido. */
+  item?: number;
+};
 
 /** What is being assembled during a booking. */
 export type Draft = {
@@ -38,6 +58,11 @@ export type Draft = {
   asked?: Minutes;
   /** Set while remarcando: the appointment being replaced. */
   replacing?: string;
+  /** O dia que o barbeiro pediu para ver. */
+  looking?: Day;
+  /** Quem está esperando o dia que foi pedido: a agenda ou o relatório. */
+  asking?: "agenda" | "relatorio";
+  comanda?: ComandaDraft;
 };
 
 export type Session = {
@@ -56,10 +81,19 @@ export type Ctx = {
   now: Moment;
   shop: Shop;
   agenda: Agenda;
+  /** O que já foi fechado. O cliente nunca lê isto; o barbeiro vive disto. */
+  comandas: Comanda[];
 };
 
-export function newSession(phone: string): Session {
-  return { phone, state: "inicio", draft: {}, choices: [], misses: 0 };
+/**
+ * Uma conversa que ainda não começou.
+ *
+ * O estado inicial é parâmetro porque existe mais de uma tabela: a do cliente
+ * começa em `inicio` e a do barbeiro em `inicio_barbeiro`. Quem cria a sessão
+ * sabe qual é a tabela daquele telefone, e o padrão serve ao caso comum.
+ */
+export function newSession(phone: string, start: StateName = "inicio"): Session {
+  return { phone, state: start, draft: {}, choices: [], misses: 0 };
 }
 
 /** A new turn always starts from a clean draft. */

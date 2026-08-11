@@ -1,9 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { BARBEIRO } from "../src/bot/barbeiro.ts";
 import { FLOW } from "../src/bot/flow.ts";
-import type { State } from "../src/bot/engine.ts";
+import type { Flow, State } from "../src/bot/engine.ts";
 import type { StateName } from "../src/bot/session.ts";
+
+/**
+ * As duas tabelas passam pelas mesmas regras.
+ *
+ * A do barbeiro nasceu depois, e é justamente por o teste ler a tabela em vez
+ * de conhecer os estados que ela veio de graça: acrescentar uma conversa nova
+ * ao projeto é acrescentar uma linha aqui.
+ */
+const FLOWS: [string, Flow][] = [
+  ["cliente", FLOW],
+  ["barbeiro", BARBEIRO],
+];
 
 /**
  * The edges of the graph, read from the table.
@@ -25,12 +38,13 @@ function edges(state: State): StateName[] {
 }
 
 /** O que a regra global de "voltar" declara que alcança. */
-function backTargets(): StateName[] {
-  const voltar = FLOW.global.find((t) => typeof t.go === "function" && t.exits);
+function backTargets(flow: Flow): StateName[] {
+  const voltar = flow.global.find((t) => typeof t.go === "function" && t.exits);
   return voltar?.exits ?? [];
 }
 
-test("a transition that decides where to go declares where it can go", () => {
+for (const [qual, FLOW] of FLOWS) {
+test(`${qual}: a transition that decides where to go declares where it can go`, () => {
   for (const [name, state] of Object.entries(FLOW.states)) {
     for (const [i, transition] of (state.on ?? []).entries()) {
       if (typeof transition.go === "function") {
@@ -43,7 +57,7 @@ test("a transition that decides where to go declares where it can go", () => {
   }
 });
 
-test("every state named by the table exists", () => {
+test(`${qual}: every state named by the table exists`, () => {
   const known = new Set(Object.keys(FLOW.states));
   const named = [
     FLOW.start,
@@ -56,7 +70,7 @@ test("every state named by the table exists", () => {
   }
 });
 
-test("every state is reachable from the start", () => {
+test(`${qual}: every state is reachable from the start`, () => {
   const seen = new Set<StateName>();
   const queue: StateName[] = [
     FLOW.start,
@@ -72,14 +86,14 @@ test("every state is reachable from the start", () => {
   assert.deepEqual(unreachable, [], "estados que ninguém alcança");
 });
 
-test("no state is a dead end", () => {
+test(`${qual}: no state is a dead end`, () => {
   for (const [name, state] of Object.entries(FLOW.states)) {
     const hasWayOut = (state.on ?? []).length > 0 || state.goto || (state.exits ?? []).length > 0;
     assert.ok(hasWayOut, `${name}: entra e não sai`);
   }
 });
 
-test("no goto walks in a circle", () => {
+test(`${qual}: no goto walks in a circle`, () => {
   for (const start of Object.keys(FLOW.states)) {
     const seen = new Set<StateName>();
     let current: StateName | undefined = start;
@@ -91,15 +105,23 @@ test("no goto walks in a circle", () => {
   }
 });
 
-test("every step back is a state, and one the voltar rule admits it reaches", () => {
-  const declared = new Set(backTargets());
-  assert.ok(declared.has("menu"), "sem back, voltar cai no menu, então menu tem que estar lá");
+test(`${qual}: every step back is a state, and one the voltar rule admits it reaches`, () => {
+  const declared = new Set(backTargets(FLOW));
+  // Sem `back`, voltar cai no menu daquela tabela, então ele tem que estar
+  // declarado — é o destino que toda conversa tem garantido.
+  assert.ok(declared.size > 0, "a regra de voltar não declarou destino nenhum");
   for (const [name, state] of Object.entries(FLOW.states)) {
     if (!state.back) continue;
     assert.ok(FLOW.states[state.back], `${name}: volta para um estado que não existe`);
     assert.ok(declared.has(state.back), `${name}: volta para ${state.back}, fora dos exits`);
   }
 });
+
+test(`${qual}: the stuck state is where a lost client ends up`, () => {
+  assert.ok(FLOW.missLimit >= 2, "menos que isso desiste do cliente cedo demais");
+  assert.ok(FLOW.states[FLOW.stuck], "o estado de saída tem que existir");
+});
+}
 
 test("a step back never walks forward", () => {
   // Voltar de escolher_hora tem que desfazer a escolha do dia, não do serviço:
@@ -109,7 +131,15 @@ test("a step back never walks forward", () => {
   assert.equal(FLOW.states["escolher_servico"]?.back, undefined);
 });
 
-test("the stuck state is where a lost client ends up", () => {
-  assert.ok(FLOW.missLimit >= 2, "menos que isso desiste do cliente cedo demais");
-  assert.ok(FLOW.states[FLOW.stuck], "o estado de saída tem que existir");
+test("a comanda só fecha na última pergunta", () => {
+  // O único efeito da tabela do barbeiro é o `close`, e ele sai de dois
+  // lugares: da falta e da forma de pagamento. Qualquer outro estado que
+  // aprenda a escrever passa por aqui primeiro.
+  const escrevem = Object.entries(BARBEIRO.states).filter(([, state]) =>
+    (state.on ?? []).some((transition) => transition.act && /close/.test(String(transition.act))),
+  );
+  assert.deepEqual(
+    escrevem.map(([name]) => name).sort(),
+    ["compareceu", "escolher_pagamento"],
+  );
 });

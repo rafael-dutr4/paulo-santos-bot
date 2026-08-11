@@ -13,11 +13,12 @@
 
 import type { Agenda, Appointment, Effect } from "../shop/agenda.ts";
 import { appointmentId, byId, upcoming } from "../shop/agenda.ts";
-import type { Service } from "../shop/shop.ts";
-import { serviceById } from "../shop/shop.ts";
+import type { Service, Shop } from "../shop/shop.ts";
+import { isBarber, serviceById } from "../shop/shop.ts";
 import { byPeriod, daysWithSlots, freeSlots } from "../shop/slots.ts";
 import type { Choice, Ctx, Session, StateName } from "./session.ts";
 import { clearDraft } from "./session.ts";
+import { BARBEIRO } from "./barbeiro.ts";
 import type { Enter, Flow, Outcome, State } from "./engine.ts";
 import { run, says, silent } from "./engine.ts";
 import {
@@ -513,7 +514,21 @@ export const FLOW: Flow = {
   },
 };
 
-/** One turn of the barbershop bot. */
+/**
+ * One turn of the barbershop bot.
+ *
+ * O único lugar do projeto que sabe que existem duas conversas. O telefone diz
+ * qual tabela roda, e o interpretador não fica sabendo de nada: para ele é
+ * sempre a mesma função lendo um `Flow`.
+ *
+ * A sessão do barbeiro começa em `inicio_barbeiro` e a do cliente em `inicio`,
+ * e é por isso que uma sessão guardada com o estado de uma tabela não é lida
+ * pela outra: os nomes de estado não se cruzam.
+ */
 export function reply(session: Session, raw: string, ctx: Ctx): Outcome {
-  return run(FLOW, session, raw, ctx);
+  return run(flowFor(ctx.shop, session.phone), session, raw, ctx);
+}
+
+export function flowFor(shop: Shop, phone: string): Flow {
+  return isBarber(shop, phone) ? BARBEIRO : FLOW;
 }
