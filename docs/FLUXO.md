@@ -1,7 +1,9 @@
 # O fluxo
 
-A conversa inteira é a tabela de `src/bot/flow.ts`. Este documento é a mesma
-tabela escrita para ler, estado por estado.
+São duas conversas, e duas tabelas: a do cliente em `src/bot/flow.ts` e a do
+barbeiro em `src/bot/barbeiro.ts`. O telefone escolhe qual roda — quem está em
+`SHOP.barbers` fala com a segunda — e o interpretador é o mesmo para as duas.
+Este documento é a mesma tabela escrita para ler, estado por estado.
 
 Convenções:
 
@@ -111,6 +113,73 @@ dois efeitos:
 [{ kind: "cancel", id }, { kind: "book", appointment }]
 ```
 
+# O barbeiro
+
+A outra tabela, para o número que está em `SHOP.barbers`. As regras globais são
+as mesmas, com `menu_barbeiro` no lugar do menu do cliente, e o destino de quem
+erra três vezes também é o menu: o barbeiro não tem a quem ser encaminhado,
+porque ele é o humano.
+
+| opção | vai para |
+| --- | --- |
+| 1 | `agenda`, do dia de hoje |
+| 2 | `pedir_dia` e depois `agenda` |
+| 3 | `comandas`, ou `nada_a_fechar` |
+| 4 | `menu_relatorio` |
+
+## A agenda
+
+| estado | comportamento |
+| --- | --- |
+| `agenda` | O dia inteiro, um horário por linha, com a situação de cada um: `✓` fechado (com o valor), `✗` faltou, `•` ainda em aberto. **Segue** para o menu. |
+| `pedir_dia` | Aceita o dia escrito à mão: `hoje`, `ontem`, `10/08`, `10/08/2025`. Sem lista numerada, porque quem pergunta já conhece a agenda. |
+
+Uma data sem ano cai no ano mais perto de hoje, então `28/12` lido em janeiro é
+o dezembro que passou. O leitor é `src/text/datas.ts`, e ele devolve as leituras
+possíveis em ordem, como o leitor de horas.
+
+## A comanda
+
+A agenda é a promessa e a comanda é o registro: quem veio, o que saiu, quanto
+deu e como pagou. Uma comanda fecha um horário, e o id dela é o id do
+agendamento.
+
+| estado | comportamento |
+| --- | --- |
+| `comandas` | Os atendimentos que já começaram e ninguém fechou. A lista é uma subtração: a agenda até agora, menos o que já tem comanda. |
+| `compareceu` | O cliente veio? `não` fecha a comanda como falta, na hora. |
+| `comanda` | As linhas e o total. 1 acrescenta um serviço, 2 corrige um valor, 3 vai para o pagamento. |
+| `servico_extra` | A tabela de serviços, para o pezinho que saiu junto. |
+| `escolher_item` | Qual linha corrigir, quando há mais de uma. Com uma só, o bot não pergunta. |
+| `pedir_valor` | Aceita `45`, `45,50`, `R$ 45`, e `tirar` para remover a linha. |
+| `escolher_pagamento` | As formas que a barbearia aceita, de `SHOP.payments`. É a última pergunta de propósito. |
+| `comanda_fechada` / `comanda_faltou` | O fim de cada caminho, e **seguem** para o menu. |
+
+Até a forma de pagamento nada foi escrito: a comanda vive no rascunho da sessão,
+e desistir no meio não deixa rastro. O fechamento sai como efeito, como o
+agendamento:
+
+```
+{ kind: "close", comanda }
+```
+
+Fechar duas vezes o mesmo horário substitui a comanda em vez de somar duas, pela
+mesma razão que `book` substitui pelo id.
+
+## O relatório
+
+| opção | período |
+| --- | --- |
+| 1 | hoje |
+| 2 | esta semana, de segunda a domingo |
+| 3 | este mês, do dia 1 ao último |
+| 4 | um dia qualquer, por `pedir_dia` |
+
+O relatório soma as comandas do período: o faturado, quantos atendimentos, o
+que saiu por serviço, quanto entrou por forma de pagamento e quantos faltaram.
+Ele nunca lê a tabela de preços — o preço já está copiado dentro de cada
+comanda, e é isso que faz um aumento em outubro não reescrever agosto.
+
 ## O que o fluxo não faz
 
 - Não entende texto livre, com uma exceção: a hora em `escolher_hora`. Quem
@@ -119,3 +188,5 @@ dois efeitos:
 - Não escolhe profissional. A barbearia tem uma agenda só.
 - Não manda lembrete véspera. Isso depende de alguém rodando fora da conversa,
   o que é trabalho da integração.
+- O barbeiro não marca nem cancela horário pela conversa dele. Ele lê a agenda e
+  fecha comanda; mexer na agenda continua sendo do lado do cliente.
