@@ -50,7 +50,7 @@ test("the hours are one message, numbered straight through the periods", () => {
       itens: [
         msg("cabecalho_periodo", { periodo: "manha" }),
         msg("item_hora", { n: 1, hora: 540 }),
-        msg("item_hora", { n: 2, hora: 555 }),
+        msg("item_hora", { n: 2, hora: 570 }),
         msg("cabecalho_periodo", { periodo: "tarde" }),
         msg("item_hora", { n: 3, hora: 840 }),
       ],
@@ -63,7 +63,7 @@ test("the hours are one message, numbered straight through the periods", () => {
       "",
       "🌅 Manhã",
       "1 - 09:00",
-      "2 - 09:15",
+      "2 - 09:30",
       "",
       "☀️ Tarde",
       "3 - 14:00",

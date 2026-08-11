@@ -83,7 +83,7 @@ export const SHOP: Shop = {
     { id: "manha", from: 0, to: 12 * 60 },
     { id: "tarde", from: 12 * 60, to: 24 * 60 },
   ],
-  slotStep: 15,
+  slotStep: 30,
   minNotice: 30,
   horizonDays: 14,
   holidays: ["2026-09-07", "2026-12-25", "2027-01-01"],

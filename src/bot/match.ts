@@ -145,8 +145,8 @@ export const offeredHour: Matcher = (input, session) => {
 /**
  * Uma hora que ninguém tem, mas que tem vizinha.
  *
- * "14:40" não existe numa grade de quinze em quinze, e mandar a lista inteira de
- * volta para o cliente achar sozinho o 14:45 é grosseria. Aqui a candidata mais
+ * "14:40" não existe numa grade de meia em meia, e mandar a lista inteira de
+ * volta para o cliente achar sozinho o 14:30 é grosseria. Aqui a candidata mais
  * próxima de qualquer interpretação vence, desde que esteja a menos de meia
  * hora do que foi pedido, e o fluxo avisa que aproximou antes de confirmar.
  */
@@ -179,7 +179,7 @@ export const anything: Matcher = (input) => (input.text === "" ? null : { text: 
 export const name: Matcher = (input) => {
   if (input.text === "" || input.raw.length > 60) return null;
   if (leadingNumber(input.text) !== null) return null;
-  // Quem responde "14:15" aqui errou a pergunta, não se chama 14:15.
+  // Quem responde "14:30" aqui errou a pergunta, não se chama 14:30.
   if (/^[\d\s:h]+$/.test(input.text)) return null;
   return { text: input.raw };
 };

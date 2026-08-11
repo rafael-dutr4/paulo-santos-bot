@@ -54,7 +54,7 @@ test("an empty day is the whole grid, and the lunch break is just the gap", () =
   assert.equal(hours[0], "09:00");
   assert.equal(hours.at(-1), "18:00");
   assert.ok(hours.includes("11:00"));
-  assert.ok(!hours.includes("11:15"), "um corte às 11:15 passaria do fechamento das 12:00");
+  assert.ok(!hours.includes("11:30"), "um corte às 11:30 passaria do fechamento das 12:00");
   assert.ok(!hours.includes("13:00"), "o almoço vai até as 14:00");
   assert.ok(hours.includes("14:00"));
 });
@@ -62,22 +62,21 @@ test("an empty day is the whole grid, and the lunch break is just the gap", () =
 test("a longer service loses the slots that do not fit before the break", () => {
   const hours = times([], TUESDAY, corteBarba);
   assert.ok(hours.includes("10:00"));
-  assert.ok(!hours.includes("10:15"), "corte + barba às 10:15 invadiria o almoço");
+  assert.ok(!hours.includes("10:30"), "corte + barba às 10:30 invadiria o almoço");
 });
 
 test("an appointment removes every slot that touches it", () => {
   const hours = times([booked(600, 30)]); // 10:00 às 10:30
   assert.ok(hours.includes("09:00"), "termina exatamente quando o outro começa");
-  assert.ok(!hours.includes("09:15"));
+  assert.ok(!hours.includes("09:30"));
   assert.ok(!hours.includes("10:00"));
-  assert.ok(!hours.includes("10:15"));
   assert.ok(hours.includes("10:30"));
 });
 
 test("today only offers what still has the minimum notice", () => {
   const now = { day: TUESDAY, at: 10 * 60 + 5 };
   const hours = times([], TUESDAY, corte, now);
-  assert.equal(hours[0], "10:45"); // 10:05 + 30min de antecedência, subindo para a grade
+  assert.equal(hours[0], "11:00"); // 10:05 + 30min de antecedência, subindo para a grade
 });
 
 test("a full day offers nothing", () => {

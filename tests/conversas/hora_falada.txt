@@ -19,7 +19,7 @@
 > 1
 < escolher_hora
 
-# 14:40 não existe numa grade de quinze em quinze, e o bot avisa antes de somir
+# 14:40 não existe numa grade de meia em meia, e o bot avisa antes de sumir
 # com o pedido: ele oferece a vizinha e a confirmação repete a hora escolhida.
 > pode ser 14 e 40?
 < aproximei
