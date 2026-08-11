@@ -520,12 +520,6 @@ body {
   color: var(--texto);
 }
 
-#barbeiro p {
-  margin: 0;
-  max-width: 34ch;
-  font-size: 14px;
-}
-
 /*
  * Numa tela grande a página vira um telefone no meio do monitor. É a mesma
  * caixa, só que com uma largura máxima e cantos arredondados.
