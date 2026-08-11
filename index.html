@@ -52,14 +52,14 @@
 
       <!-- --- a conversa ------------------------------------------------- -->
       <section id="vista-conversa" class="vista" role="tabpanel" aria-labelledby="aba-conversa">
-        <header id="topo">
+        <header id="topo" class="topo">
           <button type="button" class="icone" id="voltar" aria-label="Voltar">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z" />
             </svg>
           </button>
-          <span id="avatar" aria-hidden="true">💈</span>
-          <span id="quem">
+          <span class="avatar" aria-hidden="true">💈</span>
+          <span class="quem">
             <strong>Barbearia Paulo Santos</strong>
             <small>online</small>
           </span>
@@ -80,10 +80,10 @@
           </button>
         </header>
 
-        <div id="chat" role="log" aria-live="polite"></div>
+        <div id="chat" class="chat" role="log" aria-live="polite"></div>
 
-        <form id="composer" autocomplete="off">
-          <div id="campo">
+        <form id="composer" class="composer" autocomplete="off">
+          <div class="campo">
             <span class="icone estatico" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20m0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16M8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3M12 17.5c2.03 0 3.8-1.11 4.75-2.75h-9.5A5.48 5.48 0 0 0 12 17.5" />
@@ -101,7 +101,7 @@
               </svg>
             </span>
           </div>
-          <button type="submit" id="enviar" aria-label="Enviar">
+          <button type="submit" id="enviar" class="enviar" aria-label="Enviar">
             <svg class="seta" viewBox="0 0 24 24" aria-hidden="true">
               <path d="m2 21 21-9L2 3v7l15 2-15 2z" />
             </svg>
@@ -128,9 +128,13 @@
           </div>
           <p class="valor" id="relogio"></p>
 
-          <h2>Estado</h2>
+          <h2>Estado do cliente</h2>
           <p class="valor" id="estado"></p>
           <pre id="sessao"></pre>
+
+          <h2>Estado do barbeiro</h2>
+          <p class="valor" id="estado-barbeiro"></p>
+          <pre id="sessao-barbeiro"></pre>
 
           <h2>Agenda</h2>
           <ul id="agenda"></ul>
@@ -139,15 +143,25 @@
             <button type="button" id="clear-agenda">limpar</button>
           </div>
 
-          <h2>Conversa</h2>
+          <h2>Comandas</h2>
+          <ul id="comandas"></ul>
+
+          <h2>Conversas</h2>
           <div class="linha">
-            <button type="button" id="reset">recomeçar</button>
+            <button type="button" id="reset">recomeçar cliente</button>
+            <button type="button" id="reset-barbeiro">recomeçar barbeiro</button>
             <button type="button" id="reset-tudo">apagar tudo</button>
           </div>
         </div>
       </section>
 
-      <!-- --- a vista do barbeiro, ainda por fazer ------------------------ -->
+      <!--
+        --- a conversa do barbeiro ---------------------------------------
+
+        A mesma tela da conversa do cliente, com outro cabeçalho e outros ids.
+        É o mesmo bot, no mesmo número: o que muda é de qual telefone a
+        mensagem chega, e é isso que faz o motor rodar a outra tabela.
+      -->
       <section
         id="vista-barbeiro"
         class="vista"
@@ -155,10 +169,39 @@
         aria-labelledby="aba-barbeiro"
         hidden
       >
-        <div id="barbeiro">
-          <span aria-hidden="true">💈</span>
-          <h2>A conversa do barbeiro</h2>
-        </div>
+        <header id="topo-barbeiro" class="topo">
+          <button type="button" class="icone" id="voltar-barbeiro" aria-label="Voltar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z" />
+            </svg>
+          </button>
+          <span class="avatar" aria-hidden="true">✂️</span>
+          <span class="quem">
+            <strong>Barbearia Paulo Santos</strong>
+            <small>modo barbeiro</small>
+          </span>
+        </header>
+
+        <div id="chat-barbeiro" class="chat" role="log" aria-live="polite"></div>
+
+        <form id="composer-barbeiro" class="composer" autocomplete="off">
+          <div class="campo">
+            <input
+              id="entrada-barbeiro"
+              type="text"
+              placeholder="Mensagem"
+              aria-label="Mensagem do barbeiro"
+            />
+          </div>
+          <button type="submit" id="enviar-barbeiro" class="enviar" aria-label="Enviar">
+            <svg class="seta" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m2 21 21-9L2 3v7l15 2-15 2z" />
+            </svg>
+            <svg class="mic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3m5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12z" />
+            </svg>
+          </button>
+        </form>
       </section>
     </div>
 

@@ -112,7 +112,7 @@ body {
 
 /* --- a conversa --------------------------------------------------------- */
 
-#topo {
+.topo {
   display: flex;
   flex: none;
   align-items: center;
@@ -146,11 +146,11 @@ body {
   fill: currentcolor;
 }
 
-#topo .icone:last-of-type svg {
+.topo .icone:last-of-type svg {
   width: 20px;
 }
 
-#avatar {
+.avatar {
   display: grid;
   place-items: center;
   flex: none;
@@ -161,7 +161,7 @@ body {
   font-size: 19px;
 }
 
-#quem {
+.quem {
   display: flex;
   flex: 1;
   min-width: 0;
@@ -170,7 +170,7 @@ body {
   margin-left: 2px;
 }
 
-#quem strong {
+.quem strong {
   font-size: 16px;
   font-weight: 500;
   white-space: nowrap;
@@ -178,12 +178,12 @@ body {
   text-overflow: ellipsis;
 }
 
-#quem small {
+.quem small {
   color: var(--fraco);
   font-size: 12px;
 }
 
-#chat {
+.chat {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -339,7 +339,7 @@ body {
 
 /* --- o campo de mensagem ------------------------------------------------ */
 
-#composer {
+.composer {
   display: flex;
   flex: none;
   align-items: flex-end;
@@ -348,7 +348,7 @@ body {
   background: var(--fundo);
 }
 
-#campo {
+.campo {
   display: flex;
   flex: 1;
   min-width: 0;
@@ -360,7 +360,7 @@ body {
   box-shadow: 0 1px 1px rgb(0 0 0 / 10%);
 }
 
-#entrada {
+.campo input {
   flex: 1;
   min-width: 0;
   padding: 12px 4px;
@@ -370,11 +370,11 @@ body {
   font: inherit;
 }
 
-#entrada:focus {
+.campo input:focus {
   outline: none;
 }
 
-#enviar {
+.enviar {
   display: grid;
   place-items: center;
   flex: none;
@@ -386,22 +386,22 @@ body {
   cursor: pointer;
 }
 
-#enviar svg {
+.enviar svg {
   width: 24px;
   height: 24px;
   fill: #fff;
 }
 
 /* Sem nada escrito o botão é o microfone, como no aplicativo. */
-#enviar .seta {
+.enviar .seta {
   display: none;
 }
 
-#enviar.escrevendo .seta {
+.enviar.escrevendo .seta {
   display: block;
 }
 
-#enviar.escrevendo .mic {
+.enviar.escrevendo .mic {
   display: none;
 }
 
@@ -471,7 +471,8 @@ body {
   font-size: 13px;
 }
 
-#sessao {
+#sessao,
+#sessao-barbeiro {
   margin: 8px 0 0;
   padding: 10px;
   border-radius: 8px;
@@ -481,43 +482,23 @@ body {
   overflow-x: auto;
 }
 
-#agenda {
+#agenda,
+#comandas {
   margin: 0 0 10px;
   padding-left: 18px;
   font-size: 13px;
 }
 
-#agenda li {
+#agenda li,
+#comandas li {
   margin-bottom: 4px;
 }
 
-#agenda .vazio {
+#agenda .vazio,
+#comandas .vazio {
   list-style: none;
   margin-left: -18px;
   color: var(--fraco);
-}
-
-/* --- a vista do barbeiro ------------------------------------------------ */
-
-#barbeiro {
-  flex: 1;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 6px;
-  padding: 24px;
-  text-align: center;
-  color: var(--fraco);
-}
-
-#barbeiro span {
-  font-size: 38px;
-}
-
-#barbeiro h2 {
-  margin: 0;
-  font-size: 16px;
-  color: var(--texto);
 }
 
 /*

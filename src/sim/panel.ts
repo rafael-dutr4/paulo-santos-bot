@@ -8,11 +8,11 @@
  */
 
 import type { Choice, Session } from "../bot/session.ts";
-import type { Agenda } from "../shop/agenda.ts";
 import { SHOP, serviceById } from "../shop/shop.ts";
 import type { Moment } from "../shop/time.ts";
 import { hhmm } from "../shop/time.ts";
-import { dia } from "../text/ptbr.ts";
+import type { Db } from "../store.ts";
+import { brl, dia } from "../text/ptbr.ts";
 import { browserNow, momentFrom } from "./clock.ts";
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -31,10 +31,22 @@ export function readClock(): Moment {
   return moment ?? browserNow();
 }
 
-export function showSession(session: Session, now: Moment): void {
-  el("estado").textContent = session.state;
+/**
+ * As duas sessões vivas, lado a lado.
+ *
+ * São duas porque são duas conversas, e vê-las juntas é meio caminho para
+ * entender o desenho: o motor é o mesmo, a tabela é que muda, e cada telefone
+ * anda pela sua sem saber da outra.
+ */
+export function showSession(cliente: Session, barbeiro: Session, now: Moment): void {
   el("relogio").textContent = `${dia(now.day)}, ${hhmm(now.at)}`;
-  el("sessao").textContent = JSON.stringify(
+  paintSession("estado", "sessao", cliente);
+  paintSession("estado-barbeiro", "sessao-barbeiro", barbeiro);
+}
+
+function paintSession(estado: string, sessao: string, session: Session): void {
+  el(estado).textContent = session.state;
+  el(sessao).textContent = JSON.stringify(
     {
       nome: session.name ?? null,
       rascunho: session.draft,
@@ -57,27 +69,52 @@ function resumo(choice: Choice): string {
       return hhmm(choice.start);
     case "appointment":
       return choice.id;
+    case "item":
+      return `item ${choice.index}`;
+    case "payment":
+      return choice.id;
   }
 }
 
-export function showAgenda(agenda: Agenda): void {
-  const list = el("agenda");
+/**
+ * O banco inteiro na tela: a agenda e as comandas.
+ *
+ * São as duas metades do mesmo dia. A agenda é a promessa, e a comanda é o que
+ * aconteceu com ela — por isso ficam uma embaixo da outra, e não em telas
+ * diferentes.
+ */
+export function showAgenda(db: Db): void {
+  fill("agenda", "agenda vazia", db.agenda, (appointment) => {
+    const service = serviceById(SHOP, appointment.serviceId);
+    return `${dia(appointment.day)}, ${hhmm(appointment.start)} · ${
+      service?.name ?? appointment.serviceId
+    } · ${appointment.clientName}`;
+  });
+
+  fill("comandas", "nenhuma comanda fechada", db.comandas, (comanda) => {
+    const fim =
+      comanda.status === "feito"
+        ? `${brl(comanda.total)} · ${comanda.payment ?? ""}`
+        : "faltou";
+    return `${dia(comanda.day)}, ${hhmm(comanda.start)} · ${comanda.clientName} · ${fim}`;
+  });
+}
+
+function fill<T>(id: string, vazio: string, rows: T[], line: (row: T) => string): void {
+  const list = el(id);
   list.replaceChildren();
 
-  if (agenda.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "vazio";
-    empty.textContent = "agenda vazia";
-    list.append(empty);
+  if (rows.length === 0) {
+    const item = document.createElement("li");
+    item.className = "vazio";
+    item.textContent = vazio;
+    list.append(item);
     return;
   }
 
-  for (const appointment of agenda) {
+  for (const row of rows) {
     const item = document.createElement("li");
-    const service = serviceById(SHOP, appointment.serviceId);
-    item.textContent = `${dia(appointment.day)}, ${hhmm(appointment.start)} · ${
-      service?.name ?? appointment.serviceId
-    } · ${appointment.clientName}`;
+    item.textContent = line(row);
     list.append(item);
   }
 }

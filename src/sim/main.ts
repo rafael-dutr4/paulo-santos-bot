@@ -1,91 +1,87 @@
 /**
  * O simulador: a casca fina em volta do motor.
  *
- * Um turno é sempre a mesma coisa, e é exatamente o que um adaptador de
- * WhatsApp vai fazer:
- *
- *     mensagem -> reply(session, texto, ctx) -> guardar sessão,
- *                 aplicar efeitos na agenda, mandar as mensagens
+ * A página tem duas conversas com o mesmo bot — a do cliente e a do barbeiro —
+ * e um painel no meio para mexer no relógio e olhar o que o motor está
+ * pensando. As duas conversas são o mesmo código de `conversa.ts` com telefones
+ * diferentes, e o mesmo `Store` atrás: marcar um corte na primeira faz o
+ * horário aparecer na agenda da segunda, sem nenhuma ligação entre as telas.
  */
 
-import { reply } from "../bot/flow.ts";
-import type { Ctx } from "../bot/session.ts";
-import { newSession } from "../bot/session.ts";
-import type { Agenda, Appointment } from "../shop/agenda.ts";
-import { appointmentId, applyAll } from "../shop/agenda.ts";
+import type { Appointment } from "../shop/agenda.ts";
+import { appointmentId } from "../shop/agenda.ts";
 import { SHOP, serviceById } from "../shop/shop.ts";
 import { daysWithSlots, freeSlots } from "../shop/slots.ts";
 import type { Moment } from "../shop/time.ts";
-import { hhmm } from "../shop/time.ts";
-import { say } from "../text/say.ts";
-import { append, paint, scroll, typing } from "./chat.ts";
+import type { Bubble } from "./chat.ts";
 import { browserNow } from "./clock.ts";
+import type { Conversa } from "./conversa.ts";
+import { conversa } from "./conversa.ts";
 import { readClock, setClock, showAgenda, showSession } from "./panel.ts";
 import type { Saved } from "./store.ts";
-import { PHONE, empty, load, save } from "./store.ts";
+import { BARBER, PHONE, empty, load, save, store } from "./store.ts";
 import { tabs } from "./tabs.ts";
 import { fitToKeyboard } from "./viewport.ts";
-
-/** Quanto o bot "digita" entre um balão e outro. */
-const DELAY = 550;
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
 let saved: Saved = load();
+const db = store(() => saved);
 
-function ctx(now: Moment): Ctx {
-  return { now, shop: SHOP, agenda: saved.agenda };
+/** A conversa daquele telefone, criada na primeira vez que alguém escreve. */
+function transcript(phone: string): Bubble[] {
+  return (saved.transcripts[phone] ??= []);
 }
 
-function store(): void {
+function changed(): void {
   save(saved);
-  showSession(saved.session, readClock());
-  showAgenda(saved.agenda);
+  showSession(db.session(PHONE), db.session(BARBER), readClock());
+  showAgenda(saved.db);
 }
 
-const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
-
-async function send(text: string): Promise<void> {
-  const now = readClock();
-  const chat = el("chat");
-
-  const mine = { from: "cliente" as const, text, at: hhmm(now.at) };
-  saved.transcript.push(mine);
-  append(chat, mine);
-
-  const outcome = reply(saved.session, text, ctx(now));
-  saved.session = outcome.session;
-  saved.agenda = applyAll(saved.agenda, outcome.effects);
-  store();
-
-  // Um balão de cada vez, com uma pausa no meio. Uma resposta de três
-  // mensagens chega como três mensagens, que é como o WhatsApp se comporta.
-  for (const message of outcome.messages) {
-    const stop = typing(chat);
-    await sleep(DELAY);
-    stop();
-    const bubble = { from: "bot" as const, text: say(message), at: hhmm(now.at) };
-    saved.transcript.push(bubble);
-    append(chat, bubble);
-    save(saved);
-  }
+function now(): Moment {
+  return readClock();
 }
+
+/** As duas conversas, iguais em tudo menos no telefone. */
+function wire(phone: string, ids: { chat: string; form: string; field: string }): Conversa {
+  return conversa({
+    phone,
+    chat: el(ids.chat),
+    form: el<HTMLFormElement>(ids.form),
+    field: el<HTMLInputElement>(ids.field),
+    store: db,
+    now,
+    transcript: () => transcript(phone),
+    forget: () => {
+      delete saved.sessions[phone];
+    },
+    changed,
+  });
+}
+
+const cliente = wire(PHONE, { chat: "chat", form: "composer", field: "entrada" });
+const barbeiro = wire(BARBER, {
+  chat: "chat-barbeiro",
+  form: "composer-barbeiro",
+  field: "entrada-barbeiro",
+});
 
 /**
  * Enche a agenda com horários de outros clientes, para os horários livres
  * deixarem de ser a grade inteira e o cálculo ficar visível.
  */
 function seed(): void {
-  const now = readClock();
+  const at = readClock();
   const corte = serviceById(SHOP, "corte")!;
   const barba = serviceById(SHOP, "barba")!;
-  const days = daysWithSlots(SHOP, saved.agenda, corte, now, 2);
+  const days = daysWithSlots(SHOP, saved.db.agenda, corte, at, 2);
   const novos: Appointment[] = [];
 
   for (const [i, day] of days.entries()) {
     const service = i === 0 ? corte : barba;
     // Pega horários espalhados pelo dia, não os três primeiros.
-    const livres = freeSlots(SHOP, saved.agenda, day, service, now);
+    const livres = freeSlots(SHOP, saved.db.agenda, day, service, at);
     for (const start of [livres[1], livres[Math.floor(livres.length / 2)], livres.at(-2)]) {
       if (start === undefined) continue;
       const phone = "5511922222222";
@@ -101,69 +97,67 @@ function seed(): void {
     }
   }
 
-  saved.agenda = applyAll(saved.agenda, novos.map((appointment) => ({ kind: "book", appointment })));
-  store();
+  db.apply(novos.map((appointment) => ({ kind: "book", appointment })));
+  changed();
 }
 
-function resetConversation(): void {
-  saved = { ...saved, session: newSession(PHONE), transcript: [] };
-  paint(el("chat"), saved.transcript);
-  store();
+function repaint(): void {
+  cliente.paint();
+  barbeiro.paint();
+  changed();
 }
 
 function start(): void {
   setClock(browserNow());
-  paint(el("chat"), saved.transcript);
-  store();
+  repaint();
 
   const abas = tabs(el("abas"), (id) => {
-    // Voltar para a conversa depois de mexer no painel: o fim da lista é o que
-    // interessa, e um `div` escondido não guarda o `scrollTop`.
-    if (id === "aba-conversa") scroll(el("chat"));
+    // Voltar para uma conversa depois de mexer no painel: o fim da lista é o
+    // que interessa, e um `div` escondido não guarda o `scrollTop`.
+    if (id === "aba-conversa") cliente.scroll();
+    if (id === "aba-barbeiro") barbeiro.scroll();
   });
   // O teclado encolhe o `#app`, então o balão de baixo sai de vista se ninguém
-  // rolar. Só a conversa se importa; as outras vistas rolam sozinhas.
+  // rolar. Só as conversas se importam; o painel rola sozinho.
   fitToKeyboard(() => {
-    if (abas.current() === "aba-conversa") scroll(el("chat"));
+    if (abas.current() === "aba-conversa") cliente.scroll();
+    if (abas.current() === "aba-barbeiro") barbeiro.scroll();
   });
 
-  const field = el<HTMLInputElement>("entrada");
   // Sem nada escrito o botão é um microfone, como no aplicativo.
-  field.addEventListener("input", () => {
-    el("enviar").classList.toggle("escrevendo", field.value.trim() !== "");
-  });
+  for (const [campo, botao] of [
+    ["entrada", "enviar"],
+    ["entrada-barbeiro", "enviar-barbeiro"],
+  ]) {
+    const field = el<HTMLInputElement>(campo!);
+    field.addEventListener("input", () => {
+      el(botao!).classList.toggle("escrevendo", field.value.trim() !== "");
+    });
+  }
 
-  el<HTMLFormElement>("composer").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const text = field.value.trim();
-    if (text === "") return;
-    field.value = "";
-    el("enviar").classList.remove("escrevendo");
-    void send(text);
-  });
-
-  // A seta do cabeçalho não tem para onde voltar: o simulador é uma conversa
-  // só. Ela leva ao painel, que é o que existe "atrás" desta tela.
+  // A seta do cabeçalho não tem para onde voltar: cada tela é uma conversa só.
+  // Ela leva ao painel, que é o que existe "atrás" desta tela.
   el("voltar").addEventListener("click", () => abas.select("aba-estado"));
+  el("voltar-barbeiro").addEventListener("click", () => abas.select("aba-estado"));
 
   el("clock-now").addEventListener("click", () => {
     setClock(browserNow());
-    store();
+    changed();
   });
   for (const id of ["clock-day", "clock-time"]) {
-    el(id).addEventListener("change", store);
+    el(id).addEventListener("change", changed);
   }
 
-  el("reset").addEventListener("click", resetConversation);
+  el("reset").addEventListener("click", () => cliente.reset());
+  el("reset-barbeiro").addEventListener("click", () => barbeiro.reset());
   el("seed").addEventListener("click", seed);
   el("clear-agenda").addEventListener("click", () => {
-    saved = { ...saved, agenda: [] };
-    store();
+    saved.db = { agenda: [], comandas: [] };
+    changed();
   });
   el("reset-tudo").addEventListener("click", () => {
     saved = empty();
-    paint(el("chat"), saved.transcript);
-    store();
+    repaint();
   });
 }
 
