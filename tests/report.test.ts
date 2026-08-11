@@ -1,0 +1,92 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import type { Comanda } from "../src/shop/comanda.ts";
+import type { PaymentId } from "../src/shop/shop.ts";
+import { dayRange, monthRange, report, weekRange } from "../src/shop/report.ts";
+
+let n = 0;
+
+function feita(day: string, itens: [string, number][], payment: PaymentId): Comanda {
+  const total = itens.reduce((sum, [, price]) => sum + price, 0);
+  return {
+    id: `c${++n}`,
+    day,
+    start: 9 * 60,
+    phone: "5511922222222",
+    clientName: "Zé",
+    status: "feito",
+    itens: itens.map(([serviceId, price]) => ({ serviceId, price })),
+    total,
+    payment,
+    closedAt: { day, at: 10 * 60 },
+  };
+}
+
+function falta(day: string): Comanda {
+  return {
+    id: `c${++n}`,
+    day,
+    start: 9 * 60,
+    phone: "5511933333333",
+    clientName: "Marcos",
+    status: "faltou",
+    itens: [],
+    total: 0,
+    closedAt: { day, at: 10 * 60 },
+  };
+}
+
+const COMANDAS = [
+  feita("2026-08-10", [["corte", 4500]], "pix"),
+  feita("2026-08-11", [["corte", 4000], ["pezinho", 2000]], "dinheiro"),
+  feita("2026-08-11", [["barba", 3500]], "pix"),
+  falta("2026-08-11"),
+  feita("2026-08-20", [["corte", 4500]], "credito"),
+];
+
+test("o faturado é a soma das comandas feitas, e a falta não soma nada", () => {
+  const semana = report(COMANDAS, weekRange("2026-08-11"));
+  assert.equal(semana.atendimentos, 3);
+  assert.equal(semana.faltas, 1);
+  assert.equal(semana.faturado, 4500 + 6000 + 3500);
+});
+
+test("o serviço conta por linha da comanda, não por comanda", () => {
+  const dia = report(COMANDAS, dayRange("2026-08-11"));
+  assert.deepEqual(dia.porServico, [
+    { serviceId: "corte", quantidade: 1, total: 4000 },
+    { serviceId: "barba", quantidade: 1, total: 3500 },
+    { serviceId: "pezinho", quantidade: 1, total: 2000 },
+  ]);
+});
+
+test("o pagamento conta por comanda, com o total dela", () => {
+  const dia = report(COMANDAS, dayRange("2026-08-11"));
+  assert.deepEqual(dia.porPagamento, [
+    { payment: "dinheiro", quantidade: 1, total: 6000 },
+    { payment: "pix", quantidade: 1, total: 3500 },
+  ]);
+});
+
+test("um dia sem comanda nenhuma é um relatório vazio, não um erro", () => {
+  const vazio = report(COMANDAS, dayRange("2026-08-13"));
+  assert.equal(vazio.atendimentos, 0);
+  assert.equal(vazio.faltas, 0);
+  assert.deepEqual(vazio.porServico, []);
+});
+
+test("a semana vai de segunda a domingo", () => {
+  // 2026-08-11 é uma terça.
+  assert.deepEqual(weekRange("2026-08-11"), { from: "2026-08-10", to: "2026-08-16" });
+  // A segunda pertence à sua própria semana, e o domingo à semana que abriu.
+  assert.deepEqual(weekRange("2026-08-10"), { from: "2026-08-10", to: "2026-08-16" });
+  assert.deepEqual(weekRange("2026-08-16"), { from: "2026-08-10", to: "2026-08-16" });
+});
+
+test("o mês vai do dia 1 ao último, inclusive em fevereiro bissexto", () => {
+  assert.deepEqual(monthRange("2026-08-11"), { from: "2026-08-01", to: "2026-08-31" });
+  assert.deepEqual(monthRange("2026-02-05"), { from: "2026-02-01", to: "2026-02-28" });
+  assert.deepEqual(monthRange("2028-02-05"), { from: "2028-02-01", to: "2028-02-29" });
+  assert.deepEqual(monthRange("2026-12-31"), { from: "2026-12-01", to: "2026-12-31" });
+});
