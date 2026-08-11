@@ -8,7 +8,7 @@
 
 import type { Agenda } from "../shop/agenda.ts";
 import type { Comanda, Item } from "../shop/comanda.ts";
-import type { PaymentId, ServiceId, Shop } from "../shop/shop.ts";
+import type { PaymentId, ProductId, ServiceId, Shop } from "../shop/shop.ts";
 import type { Day, Minutes, Moment } from "../shop/time.ts";
 
 export type StateName = string;
@@ -26,6 +26,7 @@ export type StateName = string;
  */
 export type Choice =
   | { kind: "service"; id: ServiceId }
+  | { kind: "product"; id: ProductId }
   | { kind: "day"; day: Day }
   | { kind: "slot"; start: Minutes }
   | { kind: "appointment"; id: string }

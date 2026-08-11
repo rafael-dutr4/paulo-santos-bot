@@ -24,10 +24,10 @@
 import type { Appointment, Effect } from "../shop/agenda.ts";
 import { byId } from "../shop/agenda.ts";
 import type { Comanda } from "../shop/comanda.ts";
-import { comandaById, itemFor, itemsFor, pending, totalOf } from "../shop/comanda.ts";
+import { comandaById, itemFor, itemForProduct, itemsFor, pending, totalOf } from "../shop/comanda.ts";
 import type { Range } from "../shop/report.ts";
 import { dayRange, monthRange, report, weekRange } from "../shop/report.ts";
-import { serviceById } from "../shop/shop.ts";
+import { productById, serviceById } from "../shop/shop.ts";
 import type { Day } from "../shop/time.ts";
 import type { Enter, Flow, State } from "./engine.ts";
 import { says, silent } from "./engine.ts";
@@ -239,7 +239,7 @@ const comanda: State = {
           dia: appointment.day,
           hora: appointment.start,
           itens: draft.itens.map((item) =>
-            msg("item_comanda", { servico: serviceName(ctx, item.serviceId), valor: item.price }),
+            msg("item_comanda", { nome: item.name, valor: item.price }),
           ),
           total: totalOf(draft.itens),
         }),
@@ -249,8 +249,9 @@ const comanda: State = {
   exits: ["menu_barbeiro"],
   on: [
     { match: option(1), go: "servico_extra" },
+    { match: option(2), go: "produto_extra" },
     {
-      match: option(2),
+      match: option(3),
       // Com uma linha só não há o que escolher, e perguntar qual seria uma
       // pergunta com uma resposta possível.
       act: (session) => {
@@ -262,7 +263,45 @@ const comanda: State = {
       go: (session) => ((comandaDraft(session)?.itens.length ?? 0) <= 1 ? "pedir_valor" : "escolher_item"),
       exits: ["pedir_valor", "escolher_item"],
     },
-    { match: option(3), go: "escolher_pagamento" },
+    { match: option(4), go: "escolher_pagamento" },
+  ],
+};
+
+/**
+ * O que o cliente levou além do que foi feito.
+ *
+ * Mesmo desenho do serviço extra, outra lista. O produto não tem duração e não
+ * mexe na agenda: ele nasce e morre dentro da comanda.
+ */
+const produtoExtra: State = {
+  enter: (session, ctx) => ({
+    session: {
+      ...session,
+      choices: ctx.shop.products.map((product) => ({ kind: "product", id: product.id }) as const),
+    },
+    messages: [
+      msg("produto_extra", {
+        itens: ctx.shop.products.map((product, i) =>
+          msg("item_produto", { n: i + 1, nome: product.name, preco: product.price }),
+        ),
+      }),
+    ],
+  }),
+  back: "comanda",
+  on: [
+    {
+      match: choice("product"),
+      act: (session, match, ctx) => {
+        const draft = comandaDraft(session);
+        if (!draft || match.choice?.kind !== "product") return { session };
+        const product = productById(ctx.shop, match.choice.id);
+        if (!product) return { session };
+        return {
+          session: withComanda(session, { ...draft, itens: [...draft.itens, itemForProduct(product)] }),
+        };
+      },
+      go: "comanda",
+    },
   ],
 };
 
@@ -313,11 +352,7 @@ const escolherItem: State = {
       messages: [
         msg("escolher_item", {
           itens: draft.itens.map((item, i) =>
-            msg("item_para_corrigir", {
-              n: i + 1,
-              servico: serviceName(ctx, item.serviceId),
-              valor: item.price,
-            }),
+            msg("item_para_corrigir", { n: i + 1, nome: item.name, valor: item.price }),
           ),
         }),
       ],
@@ -346,7 +381,7 @@ const pedirValor: State = {
     return {
       session,
       messages: [
-        msg("pedir_valor", { servico: serviceName(ctx, item.serviceId), valor: item.price }),
+        msg("pedir_valor", { nome: item.name, valor: item.price }),
       ],
     };
   },
@@ -471,13 +506,14 @@ function relatorioDe(range: (session: Session, ctx: Ctx) => Range): Enter {
       };
     }
 
-    const servicos: Message[] = numeros.porServico.map((linha) =>
-      msg("linha_servico", {
-        servico: serviceName(ctx, linha.serviceId),
-        quantidade: linha.quantidade,
-        total: linha.total,
-      }),
-    );
+    const linhas = (de: typeof numeros.porServico): Message[] =>
+      de.map((linha) =>
+        msg("linha_item", {
+          nome: linha.name,
+          quantidade: linha.quantidade,
+          total: linha.total,
+        }),
+      );
     const pagamentos: Message[] = numeros.porPagamento.map((linha) =>
       msg("linha_pagamento", {
         forma: linha.payment,
@@ -495,7 +531,10 @@ function relatorioDe(range: (session: Session, ctx: Ctx) => Range): Enter {
           faturado: numeros.faturado,
           atendimentos: numeros.atendimentos,
           faltas: numeros.faltas,
-          servicos,
+          em_servicos: numeros.emServicos,
+          em_produtos: numeros.emProdutos,
+          servicos: linhas(numeros.porServico),
+          produtos: linhas(numeros.porProduto),
           pagamentos,
         }),
       ],
@@ -566,6 +605,7 @@ export const BARBEIRO: Flow = {
     compareceu,
     comanda,
     servico_extra: servicoExtra,
+    produto_extra: produtoExtra,
     escolher_item: escolherItem,
     pedir_valor: pedirValor,
     escolher_pagamento: escolherPagamento,

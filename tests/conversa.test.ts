@@ -120,7 +120,9 @@ function comandaFrom(value: string): Comanda {
     phone: owner,
     clientName: name.join(" ") || "Cliente",
     status: faltou ? "faltou" : "feito",
-    itens: faltou ? [] : [{ serviceId: serviceId!, price: total }],
+    itens: faltou
+      ? []
+      : [{ kind: "servico", id: serviceId!, name: serviceId!, price: total }],
     total: faltou ? 0 : total,
     ...(faltou ? {} : { payment: pagamento as PaymentId }),
     closedAt: { day: day!, at: start },

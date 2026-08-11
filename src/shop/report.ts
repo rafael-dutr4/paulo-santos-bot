@@ -11,16 +11,22 @@
  * não reescrever o faturamento de agosto.
  */
 
-import type { Comanda } from "./comanda.ts";
+import type { Comanda, Item } from "./comanda.ts";
 import { between } from "./comanda.ts";
-import type { PaymentId, ServiceId } from "./shop.ts";
+import type { PaymentId } from "./shop.ts";
 import type { Day } from "./time.ts";
 import { addDays, format, parts, weekday } from "./time.ts";
 
 /** Um intervalo de dias, com as duas pontas dentro. */
 export type Range = { from: Day; to: Day };
 
-export type ByService = { serviceId: ServiceId; quantidade: number; total: number };
+export type ByItem = {
+  kind: Item["kind"];
+  id: string;
+  name: string;
+  quantidade: number;
+  total: number;
+};
 export type ByPayment = { payment: PaymentId; quantidade: number; total: number };
 
 export type Report = {
@@ -28,9 +34,19 @@ export type Report = {
   /** Comandas fechadas como "feito". */
   atendimentos: number;
   faltas: number;
-  /** Em centavos. */
+  /** Em centavos, tudo somado. */
   faturado: number;
-  porServico: ByService[];
+  /**
+   * O mesmo total, partido em dois.
+   *
+   * Serviço é tempo de cadeira e produto é estoque, e o barbeiro decide coisas
+   * diferentes com cada número: quanto rendeu a mão dele e quanto rendeu a
+   * prateleira.
+   */
+  emServicos: number;
+  emProdutos: number;
+  porServico: ByItem[];
+  porProduto: ByItem[];
   porPagamento: ByPayment[];
 };
 
@@ -38,19 +54,27 @@ export function report(comandas: Comanda[], range: Range): Report {
   const doPeriodo = between(comandas, range.from, range.to);
   const feitas = doPeriodo.filter((c) => c.status === "feito");
 
-  const servicos = new Map<ServiceId, ByService>();
+  // As linhas são agrupadas pelo id, e o nome vem da própria linha: o catálogo
+  // pode ter mudado desde então, e o relatório fala do que aconteceu.
+  const itens = new Map<string, ByItem>();
   for (const comanda of feitas) {
     for (const item of comanda.itens) {
-      const linha = servicos.get(item.serviceId) ?? {
-        serviceId: item.serviceId,
+      const chave = `${item.kind}:${item.id}`;
+      const linha = itens.get(chave) ?? {
+        kind: item.kind,
+        id: item.id,
+        name: item.name,
         quantidade: 0,
         total: 0,
       };
       linha.quantidade += 1;
       linha.total += item.price;
-      servicos.set(item.serviceId, linha);
+      itens.set(chave, linha);
     }
   }
+  const maiorPrimeiro = (a: ByItem, b: ByItem) => b.total - a.total;
+  const porServico = [...itens.values()].filter((l) => l.kind === "servico").sort(maiorPrimeiro);
+  const porProduto = [...itens.values()].filter((l) => l.kind === "produto").sort(maiorPrimeiro);
 
   const pagamentos = new Map<PaymentId, ByPayment>();
   for (const comanda of feitas) {
@@ -70,11 +94,16 @@ export function report(comandas: Comanda[], range: Range): Report {
     atendimentos: feitas.length,
     faltas: doPeriodo.length - feitas.length,
     faturado: feitas.reduce((sum, c) => sum + c.total, 0),
+    emServicos: soma(porServico),
+    emProdutos: soma(porProduto),
     // O que rendeu mais primeiro: é a primeira linha que o barbeiro lê.
-    porServico: [...servicos.values()].sort((a, b) => b.total - a.total),
+    porServico,
+    porProduto,
     porPagamento: [...pagamentos.values()].sort((a, b) => b.total - a.total),
   };
 }
+
+const soma = (linhas: ByItem[]): number => linhas.reduce((total, linha) => total + linha.total, 0);
 
 // --- os intervalos que o barbeiro pede ------------------------------------
 

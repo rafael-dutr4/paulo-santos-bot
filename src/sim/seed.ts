@@ -24,7 +24,7 @@
 import type { Appointment, Effect } from "../shop/agenda.ts";
 import { appointmentId } from "../shop/agenda.ts";
 import type { Comanda, Item } from "../shop/comanda.ts";
-import { totalOf } from "../shop/comanda.ts";
+import { itemFor, itemForProduct, totalOf } from "../shop/comanda.ts";
 import type { Service, Shop } from "../shop/shop.ts";
 import { serviceById } from "../shop/shop.ts";
 import { daysWithSlots, freeSlots, isOpen } from "../shop/slots.ts";
@@ -151,9 +151,10 @@ function marcar(
 /**
  * A comanda daquele atendimento, variando pela posição na sequência.
  *
- * Um em cada sete faltou, um em cada quatro levou um pezinho junto e a forma de
- * pagamento gira: é o suficiente para o relatório ter linhas diferentes em vez
- * de quatro cortes iguais pagos em dinheiro.
+ * Um em cada sete faltou, um em cada quatro levou um pezinho junto, um em cada
+ * três levou alguma coisa da prateleira e a forma de pagamento gira: é o
+ * suficiente para o relatório ter linhas diferentes em vez de quatro cortes
+ * iguais pagos em dinheiro.
  */
 function fechar(shop: Shop, appointment: Appointment, n: number, now: Moment): Comanda {
   const registro = {
@@ -171,11 +172,14 @@ function fechar(shop: Shop, appointment: Appointment, n: number, now: Moment): C
   }
 
   const service = serviceById(shop, appointment.serviceId)!;
+  const itens: Item[] = [itemFor(service)];
+
+  // Um em cada quatro levou um pezinho junto, e um em cada três levou alguma
+  // coisa da prateleira: sem isso o relatório de produtos nasce vazio.
   const pezinho = serviceById(shop, "pezinho");
-  const itens: Item[] = [{ serviceId: service.id, price: service.price }];
-  if (n % 4 === 3 && pezinho && pezinho.id !== service.id) {
-    itens.push({ serviceId: pezinho.id, price: pezinho.price });
-  }
+  if (n % 4 === 3 && pezinho && pezinho.id !== service.id) itens.push(itemFor(pezinho));
+  const product = shop.products[n % shop.products.length];
+  if (n % 3 === 0 && product) itens.push(itemForProduct(product));
 
   return {
     ...registro,

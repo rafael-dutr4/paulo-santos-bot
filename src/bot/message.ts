@@ -72,6 +72,8 @@ export type MessageKey =
   | "comanda"
   | "item_comanda"
   | "servico_extra"
+  | "produto_extra"
+  | "item_produto"
   | "escolher_item"
   | "item_para_corrigir"
   | "pedir_valor"
@@ -82,7 +84,7 @@ export type MessageKey =
   // relatório
   | "menu_relatorio"
   | "relatorio"
-  | "linha_servico"
+  | "linha_item"
   | "linha_pagamento"
   | "relatorio_vazio";
 

@@ -16,19 +16,31 @@
  */
 
 import type { Appointment } from "./agenda.ts";
-import type { PaymentId, Service, ServiceId, Shop } from "./shop.ts";
+import type { PaymentId, Product, Service, Shop } from "./shop.ts";
 import { serviceById } from "./shop.ts";
 import type { Day, Minutes, Moment } from "./time.ts";
 import { compare } from "./time.ts";
 
 /**
- * Uma linha da comanda.
+ * Uma linha da comanda: um serviço feito ou um produto levado.
  *
- * O preço fica na linha, não no serviço, porque o barbeiro pode cobrar
+ * O preço fica na linha, não no catálogo, porque o barbeiro pode cobrar
  * diferente do combinado: um desconto para o cliente antigo, um corte que virou
  * corte e barba, uma gorjeta somada no cartão.
+ *
+ * O nome também é copiado, pela mesma razão. O catálogo é editável pelo bot: o
+ * refrigerante pode sair da lista em outubro, e o relatório de agosto continua
+ * tendo que saber dizer que naquele mês saíram seis refrigerantes. Uma linha de
+ * comanda é um fato acontecido, e um fato não muda quando a lista muda.
  */
-export type Item = { serviceId: ServiceId; price: number };
+export type Item = {
+  kind: "servico" | "produto";
+  /** Do serviço ou do produto, para o relatório agrupar. */
+  id: string;
+  /** Como se chamava quando foi vendido. */
+  name: string;
+  price: number;
+};
 
 export type Status = "feito" | "faltou";
 
@@ -62,11 +74,15 @@ export function totalOf(itens: Item[]): number {
  */
 export function itemsFor(shop: Shop, appointment: Appointment): Item[] {
   const service = serviceById(shop, appointment.serviceId);
-  return [{ serviceId: appointment.serviceId, price: service?.price ?? 0 }];
+  return [service ? itemFor(service) : { kind: "servico", id: appointment.serviceId, name: appointment.serviceId, price: 0 }];
 }
 
 export function itemFor(service: Service): Item {
-  return { serviceId: service.id, price: service.price };
+  return { kind: "servico", id: service.id, name: service.name, price: service.price };
+}
+
+export function itemForProduct(product: Product): Item {
+  return { kind: "produto", id: product.id, name: product.name, price: product.price };
 }
 
 export function comandaById(comandas: Comanda[], id: string): Comanda | null {

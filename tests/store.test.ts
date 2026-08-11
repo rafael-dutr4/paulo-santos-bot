@@ -22,7 +22,7 @@ const COMANDA: Comanda = {
   phone: "5511922222222",
   clientName: "Zé",
   status: "feito",
-  itens: [{ serviceId: "corte", price: 4500 }],
+  itens: [{ kind: "servico", id: "corte", name: "Corte", price: 4500 }],
   total: 4500,
   payment: "pix",
   closedAt: { day: "2026-08-11", at: 10 * 60 },

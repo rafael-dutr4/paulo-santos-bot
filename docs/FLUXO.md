@@ -165,8 +165,9 @@ agendamento.
 | --- | --- |
 | `comandas` | Os atendimentos que já começaram e ninguém fechou. A lista é uma subtração: a agenda até agora, menos o que já tem comanda. |
 | `compareceu` | O cliente veio? `não` fecha a comanda como falta, na hora. |
-| `comanda` | As linhas e o total. 1 acrescenta um serviço, 2 corrige um valor, 3 vai para o pagamento. |
+| `comanda` | As linhas e o total. 1 acrescenta um serviço, 2 acrescenta um produto, 3 corrige um valor, 4 vai para o pagamento. |
 | `servico_extra` | A tabela de serviços, para o pezinho que saiu junto. |
+| `produto_extra` | A prateleira: pomada, shampoo, refrigerante. Um produto não ocupa a cadeira e não aparece no menu do cliente — ele nasce e morre dentro da comanda. |
 | `escolher_item` | Qual linha corrigir, quando há mais de uma. Com uma só, o bot não pergunta. |
 | `pedir_valor` | Aceita `45`, `45,50`, `R$ 45`, e `tirar` para remover a linha. |
 | `escolher_pagamento` | As formas que a barbearia aceita, de `SHOP.payments`. É a última pergunta de propósito. |
@@ -192,8 +193,10 @@ mesma razão que `book` substitui pelo id.
 | 3 | este mês, do dia 1 ao último |
 | 4 | um dia qualquer, por `pedir_dia` |
 
-O relatório soma as comandas do período: o faturado, quantos atendimentos, o
-que saiu por serviço, quanto entrou por forma de pagamento e quantos faltaram.
+O relatório soma as comandas do período: o faturado (partido entre serviços e
+produtos), quantos atendimentos, o que saiu por serviço e por produto, quanto
+entrou por forma de pagamento e quantos faltaram. O bloco de produtos só aparece
+quando saiu algum.
 Ele nunca lê a tabela de preços — o preço já está copiado dentro de cada
 comanda, e é isso que faz um aumento em outubro não reescrever agosto.
 

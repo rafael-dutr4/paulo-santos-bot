@@ -10,6 +10,22 @@ import type { Day, Minutes, Weekday } from "./time.ts";
 
 export type ServiceId = string;
 
+export type ProductId = string;
+
+/**
+ * O que a barbearia vende sem cortar nada: pomada, shampoo, refrigerante.
+ *
+ * Um produto não é um serviço com duração zero. Ele não ocupa a cadeira, não
+ * aparece no menu de agendamento e ninguém marca horário para comprar bala —
+ * ele só entra na comanda, no fim, junto com o que foi feito.
+ */
+export type Product = {
+  id: ProductId;
+  name: string;
+  /** Em centavos. */
+  price: number;
+};
+
 export type Service = {
   id: ServiceId;
   /** What the client reads in the menu. */
@@ -56,6 +72,7 @@ export type Shop = {
    */
   barbers: string[];
   services: Service[];
+  products: Product[];
   /**
    * Opening intervals per weekday, indexed by `Weekday` (0 is domingo).
    *
@@ -89,6 +106,14 @@ export const SHOP: Shop = {
     { id: "corte_barba", name: "Corte + barba", minutes: 120, price: 7000 },
     { id: "pezinho", name: "Pezinho", minutes: 30, price: 2000 },
   ],
+  products: [
+    { id: "pomada", name: "Pomada", price: 3000 },
+    { id: "shampoo", name: "Shampoo", price: 4000 },
+    { id: "oleo_barba", name: "Óleo para barba", price: 5000 },
+    { id: "refrigerante", name: "Refrigerante", price: 600 },
+    { id: "cerveja", name: "Cerveja", price: 1000 },
+    { id: "bala", name: "Bala", price: 200 },
+  ],
   hours: {
     0: [], // domingo, fechado
     1: [], // segunda, fechado
@@ -111,6 +136,10 @@ export const SHOP: Shop = {
 
 export function serviceById(shop: Shop, id: ServiceId): Service | null {
   return shop.services.find((service) => service.id === id) ?? null;
+}
+
+export function productById(shop: Shop, id: ProductId): Product | null {
+  return shop.products.find((product) => product.id === id) ?? null;
 }
 
 export function isBarber(shop: Shop, phone: string): boolean {

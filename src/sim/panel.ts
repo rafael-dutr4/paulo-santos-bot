@@ -67,6 +67,7 @@ function resumo(choice: Choice): string {
       return choice.day;
     case "slot":
       return hhmm(choice.start);
+    case "product":
     case "appointment":
       return choice.id;
     case "item":

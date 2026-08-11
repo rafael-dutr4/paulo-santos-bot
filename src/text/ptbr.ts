@@ -358,21 +358,23 @@ export const PTBR: Record<MessageKey, Template> = {
       `Total: ${brl(num(w, "total"))}`,
       "",
       "1 - Acrescentar serviço",
-      "2 - Corrigir um valor",
-      "3 - Ir para o pagamento",
+      "2 - Acrescentar produto",
+      "3 - Corrigir um valor",
+      "4 - Ir para o pagamento",
     ].join("\n"),
 
-  item_comanda: (w) => `· ${str(w, "servico")} — ${brl(num(w, "valor"))}`,
+  item_comanda: (w) => `· ${str(w, "nome")} — ${brl(num(w, "valor"))}`,
 
-  servico_extra: (w) => ["O que mais saiu?", "", str(w, "itens")].join("\n"),
+  servico_extra: (w) => ["O que mais foi feito?", "", str(w, "itens")].join("\n"),
+  produto_extra: (w) => ["O que o cliente levou?", "", str(w, "itens")].join("\n"),
+  item_produto: (w) => `${num(w, "n")} - ${str(w, "nome")} (${brl(num(w, "preco"))})`,
 
   escolher_item: (w) => ["Qual valor?", "", str(w, "itens")].join("\n"),
-  item_para_corrigir: (w) =>
-    `${num(w, "n")} - ${str(w, "servico")} — ${brl(num(w, "valor"))}`,
+  item_para_corrigir: (w) => `${num(w, "n")} - ${str(w, "nome")} — ${brl(num(w, "valor"))}`,
 
   pedir_valor: (w) =>
     [
-      `${str(w, "servico")} está ${brl(num(w, "valor"))}. Quanto ficou?`,
+      `${str(w, "nome")} está ${brl(num(w, "valor"))}. Quanto ficou?`,
       "",
       "Responde o valor (45, 45,50) ou tirar para remover.",
     ].join("\n"),
@@ -391,23 +393,38 @@ export const PTBR: Record<MessageKey, Template> = {
       "\n",
     ),
 
-  relatorio: (w) =>
-    [
+  /**
+   * O relatório, com o bloco de produtos só quando saiu algum.
+   *
+   * Uma barbearia que não vende nada da prateleira não precisa ler "Produtos:
+   * R$ 0,00" toda vez, e uma que vende quer ver os dois números separados: o
+   * que rendeu a mão e o que rendeu a estante.
+   */
+  relatorio: (w) => {
+    const produtos = str(w, "produtos");
+    return [
       `📊 ${periodoEscrito(str(w, "de"), str(w, "ate"))}`,
       "",
       `Faturado: ${brl(num(w, "faturado"))} em ${num(w, "atendimentos")} atendimento${num(w, "atendimentos") === 1 ? "" : "s"}`,
+      ...(produtos === ""
+        ? []
+        : [
+            `· Serviços: ${brl(num(w, "em_servicos"))}`,
+            `· Produtos: ${brl(num(w, "em_produtos"))}`,
+          ]),
       "",
       "Por serviço",
       str(w, "servicos"),
+      ...(produtos === "" ? [] : ["", "Produtos", produtos]),
       "",
       "Pagamento",
       str(w, "pagamentos"),
       "",
       `Faltas: ${num(w, "faltas")}`,
-    ].join("\n"),
+    ].join("\n");
+  },
 
-  linha_servico: (w) =>
-    `· ${str(w, "servico")} ${num(w, "quantidade")}× — ${brl(num(w, "total"))}`,
+  linha_item: (w) => `· ${str(w, "nome")} ${num(w, "quantidade")}× — ${brl(num(w, "total"))}`,
   linha_pagamento: (w) => `· ${forma(str(w, "forma"))} — ${brl(num(w, "total"))}`,
 
   relatorio_vazio: (w) =>
