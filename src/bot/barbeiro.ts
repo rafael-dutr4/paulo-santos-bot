@@ -30,7 +30,7 @@ import { dayRange, monthRange, report, weekRange } from "../shop/report.ts";
 import { idFrom, productById, serviceById } from "../shop/shop.ts";
 import type { Day, Minutes } from "../shop/time.ts";
 import type { Enter, Flow, State } from "./engine.ts";
-import { says, silent } from "./engine.ts";
+import { numbered, says, silent } from "./engine.ts";
 import {
   anything,
   choice,
@@ -49,6 +49,25 @@ import type { Message } from "./message.ts";
 import { msg } from "./message.ts";
 import type { CatalogDraft, Choice, ComandaDraft, Ctx, Session, StateName } from "./session.ts";
 import { clearDraft } from "./session.ts";
+
+/** Para onde "voltar" leva do lado do barbeiro. */
+const BACK_TARGETS = ["menu_barbeiro", "comanda", "catalogo"];
+
+function backFrom(session: Session): StateName {
+  return BARBEIRO.states[session.state]?.back ?? "menu_barbeiro";
+}
+
+/**
+ * Onde fica o "voltar" em cada menu de tamanho fixo.
+ *
+ * As listas dinâmicas ganham a última linha de `numbered()`, que sabe quantos
+ * itens saíram. Um menu escrito à mão não tem quem conte por ele, então o
+ * número é uma constante usada nos dois lugares — no texto e na transição.
+ */
+const VOLTAR_COMANDA = 5;
+const VOLTAR_SERVICO = 4;
+const VOLTAR_PRODUTO = 3;
+const VOLTAR_RELATORIO = 5;
 
 // --- lendo o rascunho ------------------------------------------------------
 
@@ -143,24 +162,21 @@ const comandas: State = {
     const abertas = pending(ctx.agenda, ctx.comandas, ctx.now);
     if (abertas.length === 0) return { session, messages: [], go: "nada_a_fechar" };
 
-    return {
-      session: {
-        ...session,
-        choices: abertas.map((a) => ({ kind: "appointment", id: a.id }) as const),
-      },
-      messages: [
-        msg("comandas_pendentes", {
-          itens: abertas.map((a, i) =>
-            msg("item_pendente", {
-              n: i + 1,
-              dia: a.day,
-              hora: a.start,
-              servico: serviceName(ctx, a.serviceId),
-              nome: a.clientName,
-            }),
-          ),
+    const lista = numbered(
+      abertas.map((a, i) =>
+        msg("item_pendente", {
+          n: i + 1,
+          dia: a.day,
+          hora: a.start,
+          servico: serviceName(ctx, a.serviceId),
+          nome: a.clientName,
         }),
-      ],
+      ),
+      abertas.map((a) => ({ kind: "appointment", id: a.id }) as const),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("comandas_pendentes", { itens: lista.itens })],
     };
   },
   exits: ["nada_a_fechar"],
@@ -243,9 +259,7 @@ const comanda: State = {
     if (!draft || !appointment) return { session, messages: [], go: "menu_barbeiro" };
 
     return {
-      // Sair da lista de itens limpa o que foi oferecido: as opções daqui são
-      // fixas, e uma oferta velha resolveria um número contra a lista errada.
-      session: { ...session, choices: [] },
+      session,
       messages: [
         msg("comanda", {
           nome: appointment.clientName,
@@ -255,6 +269,7 @@ const comanda: State = {
             msg("item_comanda", { nome: item.name, valor: item.price }),
           ),
           total: totalOf(draft.itens),
+          voltar: VOLTAR_COMANDA,
         }),
       ],
     };
@@ -277,6 +292,7 @@ const comanda: State = {
       exits: ["pedir_valor", "escolher_item"],
     },
     { match: option(4), go: "escolher_pagamento" },
+    { match: option(VOLTAR_COMANDA), go: backFrom, exits: BACK_TARGETS },
   ],
 };
 
@@ -287,19 +303,18 @@ const comanda: State = {
  * mexe na agenda: ele nasce e morre dentro da comanda.
  */
 const produtoExtra: State = {
-  enter: (session, ctx) => ({
-    session: {
-      ...session,
-      choices: ctx.shop.products.map((product) => ({ kind: "product", id: product.id }) as const),
-    },
-    messages: [
-      msg("produto_extra", {
-        itens: ctx.shop.products.map((product, i) =>
-          msg("item_produto", { n: i + 1, nome: product.name, preco: product.price }),
-        ),
-      }),
-    ],
-  }),
+  enter: (session, ctx) => {
+    const lista = numbered(
+      ctx.shop.products.map((product, i) =>
+        msg("item_produto", { n: i + 1, nome: product.name, preco: product.price }),
+      ),
+      ctx.shop.products.map((product) => ({ kind: "product", id: product.id }) as const),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("produto_extra", { itens: lista.itens })],
+    };
+  },
   back: "comanda",
   on: [
     {
@@ -319,24 +334,23 @@ const produtoExtra: State = {
 };
 
 const servicoExtra: State = {
-  enter: (session, ctx) => ({
-    session: {
-      ...session,
-      choices: ctx.shop.services.map((service) => ({ kind: "service", id: service.id }) as const),
-    },
-    messages: [
-      msg("servico_extra", {
-        itens: ctx.shop.services.map((service, i) =>
-          msg("item_servico", {
-            n: i + 1,
-            nome: service.name,
-            minutos: service.minutes,
-            preco: service.price,
-          }),
-        ),
-      }),
-    ],
-  }),
+  enter: (session, ctx) => {
+    const lista = numbered(
+      ctx.shop.services.map((service, i) =>
+        msg("item_servico", {
+          n: i + 1,
+          nome: service.name,
+          minutos: service.minutes,
+          preco: service.price,
+        }),
+      ),
+      ctx.shop.services.map((service) => ({ kind: "service", id: service.id }) as const),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("servico_extra", { itens: lista.itens })],
+    };
+  },
   back: "comanda",
   on: [
     {
@@ -357,18 +371,15 @@ const escolherItem: State = {
   enter: (session, ctx) => {
     const draft = comandaDraft(session);
     if (!draft) return { session, messages: [], go: "menu_barbeiro" };
+    const lista = numbered(
+      draft.itens.map((item, i) =>
+        msg("item_para_corrigir", { n: i + 1, nome: item.name, valor: item.price }),
+      ),
+      draft.itens.map((_item, index) => ({ kind: "item", index }) as const),
+    );
     return {
-      session: {
-        ...session,
-        choices: draft.itens.map((_item, index) => ({ kind: "item", index }) as const),
-      },
-      messages: [
-        msg("escolher_item", {
-          itens: draft.itens.map((item, i) =>
-            msg("item_para_corrigir", { n: i + 1, nome: item.name, valor: item.price }),
-          ),
-        }),
-      ],
+      session: { ...session, choices: lista.choices },
+      messages: [msg("escolher_item", { itens: lista.itens })],
     };
   },
   exits: ["menu_barbeiro"],
@@ -432,18 +443,21 @@ function withoutItem(session: Session): Session {
 }
 
 const escolherPagamento: State = {
-  enter: (session, ctx) => ({
-    session: {
-      ...session,
-      choices: ctx.shop.payments.map((id) => ({ kind: "payment", id }) as const),
-    },
-    messages: [
-      msg("escolher_pagamento", {
-        total: totalOf(comandaDraft(session)?.itens ?? []),
-        itens: ctx.shop.payments.map((id, i) => msg("item_pagamento", { n: i + 1, forma: id })),
-      }),
-    ],
-  }),
+  enter: (session, ctx) => {
+    const lista = numbered(
+      ctx.shop.payments.map((id, i) => msg("item_pagamento", { n: i + 1, forma: id })),
+      ctx.shop.payments.map((id) => ({ kind: "payment", id }) as const),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [
+        msg("escolher_pagamento", {
+          total: totalOf(comandaDraft(session)?.itens ?? []),
+          itens: lista.itens,
+        }),
+      ],
+    };
+  },
   back: "comanda",
   on: [
     {
@@ -518,6 +532,7 @@ const catalogo: State = {
       ...produtos.map((p) => ({ kind: "product", id: p.id }) as const),
       { kind: "novo", what: "servico" },
       { kind: "novo", what: "produto" },
+      { kind: "voltar" },
     ];
 
     let n = 0;
@@ -538,6 +553,7 @@ const catalogo: State = {
           ),
           novo_servico: ++n,
           novo_produto: ++n,
+          voltar: ++n,
         }),
       ],
     };
@@ -604,6 +620,7 @@ const editarItem: State = {
           nome: item.name,
           preco: item.price,
           minutos: item.minutes ?? 0,
+          voltar: isServico(session) ? VOLTAR_SERVICO : VOLTAR_PRODUTO,
         }),
       ],
     };
@@ -615,6 +632,8 @@ const editarItem: State = {
     { match: when(isServico, option(2)), go: "mudar_tempo" },
     { match: when(isServico, option(3)), go: "confirmar_tirar" },
     { match: when(isProduto, option(2)), go: "confirmar_tirar" },
+    { match: when(isServico, option(VOLTAR_SERVICO)), go: backFrom, exits: BACK_TARGETS },
+    { match: when(isProduto, option(VOLTAR_PRODUTO)), go: backFrom, exits: BACK_TARGETS },
   ],
 };
 
@@ -841,7 +860,7 @@ function relatorioDe(range: (session: Session, ctx: Ctx) => Range): Enter {
 }
 
 const menuRelatorio: State = {
-  enter: says(msg("menu_relatorio")),
+  enter: says(msg("menu_relatorio", { voltar: VOLTAR_RELATORIO })),
   on: [
     { match: option(1), go: "relatorio_hoje" },
     { match: option(2), go: "relatorio_semana" },
@@ -852,6 +871,7 @@ const menuRelatorio: State = {
       act: (session) => ({ session: { ...session, draft: { ...session.draft, asking: "relatorio" } } }),
       go: "pedir_dia",
     },
+    { match: option(VOLTAR_RELATORIO), go: backFrom, exits: BACK_TARGETS },
   ],
 };
 
@@ -872,13 +892,6 @@ const menuBarbeiro: State = {
   ],
 };
 
-/** Para onde "voltar" leva do lado do barbeiro. */
-const BACK_TARGETS = ["menu_barbeiro", "comanda", "catalogo"];
-
-function backFrom(session: Session): StateName {
-  return BARBEIRO.states[session.state]?.back ?? "menu_barbeiro";
-}
-
 export const BARBEIRO: Flow = {
   advance,
   start: "inicio_barbeiro",
@@ -888,6 +901,8 @@ export const BARBEIRO: Flow = {
   missLimit: 3,
   global: [
     { match: keyword("menu", "opcoes"), go: "menu_barbeiro" },
+    // A última linha de toda lista, posta por `numbered()` e atendida aqui.
+    { match: choice("voltar"), go: backFrom, exits: BACK_TARGETS },
     { match: keyword("voltar"), go: backFrom, exits: BACK_TARGETS },
     { match: keyword("sair", "tchau", "encerrar"), go: "despedida_barbeiro" },
   ],

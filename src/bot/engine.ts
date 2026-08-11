@@ -24,7 +24,7 @@ import type { Match, Matcher } from "./match.ts";
 import { input } from "./match.ts";
 import type { Message } from "./message.ts";
 import { msg } from "./message.ts";
-import type { Ctx, Session, StateName } from "./session.ts";
+import type { Choice, Ctx, Session, StateName } from "./session.ts";
 
 /**
  * Entering a state produces what it says, and may store what it offered.
@@ -175,7 +175,11 @@ function enter(
     const state = flow.states[current];
     if (!state) throw new Error(`estado desconhecido: ${current}`);
 
-    const entered = state.enter({ ...moved, state: current }, ctx);
+    // As ofertas pertencem ao estado que as fez. Entrar em qualquer estado
+    // apaga a lista anterior, e quem oferece põe a sua — sem isso, um "2"
+    // respondido a uma pergunta de sim ou não seria resolvido contra a lista
+    // que o estado passado tinha mostrado.
+    const entered = state.enter({ ...moved, state: current, choices: [] }, ctx);
     moved = { ...entered.session, state: current };
     messages.push(...entered.messages);
 
@@ -184,6 +188,28 @@ function enter(
     current = next;
   }
   throw new Error(`goto em ciclo a partir de ${target}`);
+}
+
+/**
+ * Uma lista numerada que termina em "voltar".
+ *
+ * Toda lista do bot termina do mesmo jeito, e por isso a última linha não é
+ * escrita em lugar nenhum: ela é acrescentada aqui, com o número que sobrou, e
+ * a oferta correspondente entra junto. Quem lê um menu numerado não adivinha
+ * que também pode digitar uma palavra, então a saída precisa estar na lista.
+ *
+ * A transição que atende essa oferta é global, uma por tabela, e usa o mesmo
+ * `back` que a palavra "voltar" já usava. Um estado novo com lista ganha a
+ * saída de graça, e não há um segundo lugar onde esquecer de pôr.
+ */
+export function numbered(
+  itens: Message[],
+  choices: Choice[],
+): { itens: Message[]; choices: Choice[] } {
+  return {
+    itens: [...itens, msg("item_voltar", { n: choices.length + 1 })],
+    choices: [...choices, { kind: "voltar" }],
+  };
 }
 
 /** A state that always says the same thing. */

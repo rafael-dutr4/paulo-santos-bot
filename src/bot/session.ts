@@ -34,6 +34,8 @@ export type Choice =
   | { kind: "item"; index: number }
   /** A última linha da lista do catálogo: "novo serviço", "novo produto". */
   | { kind: "novo"; what: CatalogKind }
+  /** A última linha de toda lista numerada. */
+  | { kind: "voltar" }
   | { kind: "payment"; id: PaymentId };
 
 /**

@@ -28,6 +28,20 @@ isso que ninguém fica preso dentro de um agendamento pela metade.
 | `voltar` | o `back` do estado atual, ou `menu` se ele não tiver um |
 | `sair`, `tchau`, `encerrar` | `despedida` |
 
+Toda lista numerada termina em `N - Voltar`, e esse número faz o mesmo que a
+palavra. Quem lê um menu numerado não adivinha que também pode digitar uma
+palavra, então a saída precisa estar na lista. A última linha é posta por
+`numbered()`, que sabe quantos itens saíram, e atendida por uma regra global —
+um estado novo com lista ganha a saída de graça. Nos menus de tamanho fixo, o
+número é uma constante usada no texto e na transição.
+
+Os dois menus de entrada (`menu` e `menu_barbeiro`) não têm essa linha: atrás
+deles não há nada, e uma opção que repete o mesmo menu é ruído.
+
+Entrar em qualquer estado apaga as ofertas do estado anterior — elas pertencem a
+quem as fez. Sem isso, um `2` respondido a uma pergunta de sim ou não seria
+resolvido contra a lista que a tela passada mostrou.
+
 `voltar` é um passo atrás, não o menu. Quem abriu as horas de um dia e não
 gostou de nenhuma queria trocar o dia, e o menu apagaria também o serviço que
 ele já tinha escolhido:

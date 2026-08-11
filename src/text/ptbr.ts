@@ -161,6 +161,9 @@ export const PTBR: Record<MessageKey, Template> = {
 
   nao_entendi: () => "Não entendi 🤔 Responde com o número da opção, por favor.",
 
+  /** A última linha de toda lista numerada, e a única saída que não é palavra. */
+  item_voltar: (w) => `${num(w, "n")} - Voltar`,
+
   despedida: () => `Valeu! Qualquer coisa é só chamar. Até mais ✂️`,
 
   humano: () =>
@@ -195,14 +198,7 @@ export const PTBR: Record<MessageKey, Template> = {
   item_servico: (w) =>
     `${num(w, "n")} - ${str(w, "nome")} (${num(w, "minutos")} min, ${brl(num(w, "preco"))})`,
 
-  escolher_dia: (w) =>
-    [
-      `${str(w, "servico")}. Para quando?`,
-      "",
-      str(w, "itens"),
-      "",
-      "Se quiser trocar o serviço, é só dizer voltar.",
-    ].join("\n"),
+  escolher_dia: (w) => [`${str(w, "servico")}. Para quando?`, "", str(w, "itens")].join("\n"),
   item_dia: (w) => `${num(w, "n")} - ${dia(str(w, "dia"))}`,
 
   escolher_hora: (w) =>
@@ -211,7 +207,6 @@ export const PTBR: Record<MessageKey, Template> = {
       str(w, "itens"),
       "",
       "Responde com o número ou com o horário.",
-      "Se nenhum servir, diz voltar que eu mostro os outros dias.",
     ].join("\n"),
 
   // O `\n` na frente é o que separa um período do outro. Os itens são juntados
@@ -289,7 +284,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "",
       "1 - Cancelar",
       "2 - Remarcar",
-      "3 - Voltar",
+      `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
   confirmar_cancelamento: (w) =>
@@ -344,7 +339,8 @@ export const PTBR: Record<MessageKey, Template> = {
 
   agenda_vazia: (w) => `Nada marcado em ${dia(str(w, "dia"))}.`,
 
-  pedir_dia: () => "Qual dia? (hoje, ontem, quinta, quinta passada, 10/08)",
+  pedir_dia: () =>
+    ["Qual dia? (hoje, ontem, quinta, quinta passada, 10/08)", "", "Ou voltar."].join("\n"),
 
   comandas_pendentes: (w) => ["Comandas em aberto:", "", str(w, "itens")].join("\n"),
   item_pendente: (w) =>
@@ -370,6 +366,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "2 - Acrescentar produto",
       "3 - Corrigir um valor",
       "4 - Ir para o pagamento",
+      `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
   item_comanda: (w) => `· ${str(w, "nome")} — ${brl(num(w, "valor"))}`,
@@ -385,7 +382,7 @@ export const PTBR: Record<MessageKey, Template> = {
     [
       `${str(w, "nome")} está ${brl(num(w, "valor"))}. Quanto ficou?`,
       "",
-      "Responde o valor (45, 45,50) ou tirar para remover.",
+      "Responde o valor (45, 45,50), tirar para remover, ou voltar.",
     ].join("\n"),
 
   escolher_pagamento: (w) =>
@@ -409,6 +406,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "",
       `${num(w, "novo_servico")} - Novo serviço`,
       `${num(w, "novo_produto")} - Novo produto`,
+      `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
   linha_catalogo_servico: (w) =>
@@ -422,6 +420,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "1 - Mudar o preço",
       "2 - Mudar o tempo",
       "3 - Tirar da lista",
+      `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
   editar_produto: (w) =>
@@ -430,11 +429,13 @@ export const PTBR: Record<MessageKey, Template> = {
       "",
       "1 - Mudar o preço",
       "2 - Tirar da lista",
+      `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
-  mudar_preco: (w) => `${str(w, "nome")} está ${brl(num(w, "preco"))}. Quanto vai ficar?`,
+  mudar_preco: (w) =>
+    `${str(w, "nome")} está ${brl(num(w, "preco"))}. Quanto vai ficar?\n\nOu voltar.`,
   mudar_tempo: (w) =>
-    `${str(w, "nome")} ocupa ${tempo(num(w, "minutos"))}. Quanto tempo vai levar? (30, 1h, 1h30)`,
+    `${str(w, "nome")} ocupa ${tempo(num(w, "minutos"))}. Quanto tempo vai levar? (30, 1h, 1h30)\n\nOu voltar.`,
 
   confirmar_tirar: (w) =>
     [
@@ -443,18 +444,24 @@ export const PTBR: Record<MessageKey, Template> = {
       "As comandas antigas não mudam: elas guardam o nome e o preço do dia.",
     ].join("\n"),
 
-  novo_servico: () => "Qual o nome do serviço?",
-  novo_produto: () => "Qual o nome do produto?",
+  novo_servico: () => "Qual o nome do serviço?\n\nOu voltar.",
+  novo_produto: () => "Qual o nome do produto?\n\nOu voltar.",
   novo_preco: (w) => `Quanto custa ${str(w, "nome")}?`,
   novo_tempo: (w) => `Quanto tempo leva ${str(w, "nome")}? (30, 1h, 1h30)`,
 
   salvo: () => "Pronto ✅",
   tirado: () => "Tirei da lista 👍",
 
-  menu_relatorio: () =>
-    ["Relatório de quando?", "", "1 - Hoje", "2 - Esta semana", "3 - Este mês", "4 - Outro dia"].join(
-      "\n",
-    ),
+  menu_relatorio: (w) =>
+    [
+      "Relatório de quando?",
+      "",
+      "1 - Hoje",
+      "2 - Esta semana",
+      "3 - Este mês",
+      "4 - Outro dia",
+      `${num(w, "voltar")} - Voltar`,
+    ].join("\n"),
 
   /**
    * O relatório, com o bloco de produtos só quando saiu algum.

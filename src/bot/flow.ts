@@ -20,7 +20,7 @@ import type { Choice, Ctx, Session, StateName } from "./session.ts";
 import { clearDraft } from "./session.ts";
 import { BARBEIRO } from "./barbeiro.ts";
 import type { Enter, Flow, Outcome, State } from "./engine.ts";
-import { run, says, silent } from "./engine.ts";
+import { numbered, run, says, silent } from "./engine.ts";
 import {
   anyHour,
   anything,
@@ -75,6 +75,26 @@ function hasDays(session: Session, ctx: Ctx): boolean {
   return daysWithSlots(ctx.shop, agendaFor(session, ctx), service, ctx.now, 1).length > 0;
 }
 
+/**
+ * Para onde "voltar" pode levar. É a lista que o teste do grafo lê, e um teste
+ * separado cobra que todo `back` da tabela esteja aqui dentro.
+ */
+const BACK_TARGETS = ["menu", "escolher_servico", "escolher_dia"];
+
+function backFrom(session: Session): StateName {
+  return FLOW.states[session.state]?.back ?? "menu";
+}
+
+/**
+ * Onde fica o "voltar" num menu de tamanho fixo.
+ *
+ * As listas dinâmicas ganham a última linha de `numbered()`, que sabe quantos
+ * itens saíram. Um menu escrito à mão não tem quem conte por ele, então o
+ * número é uma constante, usada nos dois lugares — no texto e na transição —
+ * para não haver como um andar sem o outro.
+ */
+const VOLTAR_O_QUE_FAZER = 3;
+
 // --- the states ------------------------------------------------------------
 
 const menu: State = {
@@ -110,24 +130,23 @@ const menu: State = {
 };
 
 const escolherServico: State = {
-  enter: (session, ctx) => ({
-    session: {
-      ...session,
-      choices: ctx.shop.services.map((service) => ({ kind: "service", id: service.id }) as const),
-    },
-    messages: [
-      msg("escolher_servico", {
-        itens: ctx.shop.services.map((service, i) =>
-          msg("item_servico", {
-            n: i + 1,
-            nome: service.name,
-            minutos: service.minutes,
-            preco: service.price,
-          }),
-        ),
-      }),
-    ],
-  }),
+  enter: (session, ctx) => {
+    const lista = numbered(
+      ctx.shop.services.map((service, i) =>
+        msg("item_servico", {
+          n: i + 1,
+          nome: service.name,
+          minutos: service.minutes,
+          preco: service.price,
+        }),
+      ),
+      ctx.shop.services.map((service) => ({ kind: "service", id: service.id }) as const),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("escolher_servico", { itens: lista.itens })],
+    };
+  },
   on: [
     {
       match: choice("service"),
@@ -151,17 +170,13 @@ const escolherDia: State = {
     const days = daysWithSlots(ctx.shop, agendaFor(session, ctx), service, ctx.now, DAYS_SHOWN);
     if (days.length === 0) return { session, messages: [], go: "sem_horarios" };
 
+    const lista = numbered(
+      days.map((day, i) => msg("item_dia", { n: i + 1, dia: day })),
+      days.map((day) => ({ kind: "day", day }) as const),
+    );
     return {
-      session: {
-        ...session,
-        choices: days.map((day) => ({ kind: "day", day }) as const),
-      },
-      messages: [
-        msg("escolher_dia", {
-          servico: service.name,
-          itens: days.map((day, i) => msg("item_dia", { n: i + 1, dia: day })),
-        }),
-      ],
+      session: { ...session, choices: lista.choices },
+      messages: [msg("escolher_dia", { servico: service.name, itens: lista.itens })],
     };
   },
   exits: ["menu", "sem_horarios"],
@@ -202,9 +217,10 @@ const escolherHora: State = {
       }
     }
 
+    const lista = numbered(itens, choices);
     return {
-      session: { ...session, choices },
-      messages: [msg("escolher_hora", { dia: day, itens })],
+      session: { ...session, choices: lista.choices },
+      messages: [msg("escolher_hora", { dia: day, itens: lista.itens })],
     };
   },
   exits: ["menu", "escolher_dia"],
@@ -388,23 +404,20 @@ const meusAgendamentos: State = {
     const mine = upcoming(ctx.agenda, session.phone, ctx.now);
     if (mine.length === 0) return { session, messages: [], go: "sem_agendamentos" };
 
-    return {
-      session: {
-        ...session,
-        choices: mine.map((a) => ({ kind: "appointment", id: a.id }) as const),
-      },
-      messages: [
-        msg("meus_agendamentos", {
-          itens: mine.map((a, i) =>
-            msg("item_agendamento", {
-              n: i + 1,
-              servico: serviceById(ctx.shop, a.serviceId)?.name ?? a.serviceId,
-              dia: a.day,
-              hora: a.start,
-            }),
-          ),
+    const lista = numbered(
+      mine.map((a, i) =>
+        msg("item_agendamento", {
+          n: i + 1,
+          servico: serviceById(ctx.shop, a.serviceId)?.name ?? a.serviceId,
+          dia: a.day,
+          hora: a.start,
         }),
-      ],
+      ),
+      mine.map((a) => ({ kind: "appointment", id: a.id }) as const),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("meus_agendamentos", { itens: lista.itens })],
     };
   },
   exits: ["sem_agendamentos"],
@@ -442,6 +455,7 @@ const oQueFazer: State = {
           servico: serviceById(ctx.shop, appointment.serviceId)?.name ?? appointment.serviceId,
           dia: appointment.day,
           hora: appointment.start,
+          voltar: VOLTAR_O_QUE_FAZER,
         }),
       ],
     };
@@ -457,7 +471,7 @@ const oQueFazer: State = {
       go: (session, ctx) => (hasDays(session, ctx) ? "escolher_dia" : "sem_horarios"),
       exits: ["escolher_dia", "sem_horarios"],
     },
-    { match: option(3), go: "menu" },
+    { match: option(VOLTAR_O_QUE_FAZER), go: backFrom, exits: BACK_TARGETS },
   ],
 };
 
@@ -490,16 +504,6 @@ const confirmarCancelamento: State = {
   ],
 };
 
-/**
- * Para onde "voltar" pode levar. É a lista que o teste do grafo lê, e um teste
- * separado cobra que todo `back` da tabela esteja aqui dentro.
- */
-const BACK_TARGETS = ["menu", "escolher_servico", "escolher_dia"];
-
-function backFrom(session: Session): StateName {
-  return FLOW.states[session.state]?.back ?? "menu";
-}
-
 export const FLOW: Flow = {
   advance,
   start: "inicio",
@@ -507,6 +511,9 @@ export const FLOW: Flow = {
   missLimit: 3,
   global: [
     { match: keyword("menu", "opcoes"), go: "menu" },
+    // A última linha de toda lista. A oferta é posta por `numbered()` e
+    // atendida aqui, uma vez, para nenhum estado ter que lembrar disso.
+    { match: choice("voltar"), go: backFrom, exits: BACK_TARGETS },
     // "Voltar" é um passo atrás, não o menu. Quem abriu a lista de horas e não
     // gostou de nenhuma queria trocar o dia, e mandá-lo para o menu apagaria
     // também o serviço que ele já tinha escolhido.

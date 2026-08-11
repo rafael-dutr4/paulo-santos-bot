@@ -72,6 +72,8 @@ function resumo(choice: Choice): string {
       return choice.id;
     case "novo":
       return `novo ${choice.what}`;
+    case "voltar":
+      return "voltar";
     case "item":
       return `item ${choice.index}`;
     case "payment":

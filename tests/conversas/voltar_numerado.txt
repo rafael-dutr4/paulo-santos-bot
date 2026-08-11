@@ -1,0 +1,27 @@
+# A saída também é uma linha da lista. Quem lê um menu numerado não adivinha
+# que pode digitar uma palavra, então "voltar" é sempre o último número — e vai
+# para o mesmo lugar que a palavra: um passo atrás.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+
+> oi
+< saudacao
+< menu
+
+> 1
+< escolher_servico
+
+# Quatro serviços, então o 5 é a saída. Atrás dos serviços está o menu.
+> 5
+< menu
+
+> 1
+< escolher_servico
+
+> 1
+< escolher_dia
+
+# Seis dias com horário livre, então o 7 é a saída. Atrás dos dias está o
+# serviço, e não o menu: o passo é um só.
+> 7
+< escolher_servico

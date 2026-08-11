@@ -72,8 +72,26 @@ test("tirar da lista tira, e a lista do mesmo turno já não mostra", () => {
   assert.doesNotMatch(dito, /Bala/);
 });
 
-test("o produto não tem tempo, e a opção de serviço não vale para ele", () => {
-  // No produto, 2 é "tirar da lista"; 3 não existe e cai no não entendi.
-  const { dito } = conversa(["oi", "5", "10", "3"]);
-  assert.match(dito, /Não entendi/);
+test("o produto não tem tempo, e o menu dele é um item mais curto", () => {
+  // No serviço: preço, tempo, tirar, voltar. No produto não há tempo, então
+  // "tirar" sobe para 2 e o voltar para 3.
+  const { dito: servico } = conversa(["oi", "5", "1"]);
+  assert.match(servico, /2 - Mudar o tempo/);
+  assert.match(servico, /4 - Voltar/);
+
+  const { dito: produto } = conversa(["oi", "5", "10"]);
+  assert.doesNotMatch(produto, /Mudar o tempo/);
+  assert.match(produto, /3 - Voltar/);
+});
+
+test("toda lista termina em voltar, e ele é um passo atrás", () => {
+  // O catálogo tem 4 serviços, 6 produtos e as duas linhas de "novo": o 13 é a
+  // saída. Atrás do catálogo está o menu.
+  const { dito: doCatalogo } = conversa(["oi", "5", "13"]);
+  assert.match(doCatalogo, /1 - Agenda de hoje/);
+
+  // E atrás de um item do catálogo está o catálogo, não o menu: um passo, como
+  // a palavra "voltar" sempre fez.
+  const { dito: doItem } = conversa(["oi", "5", "1", "4"]);
+  assert.match(doItem, /✂️ Serviços/);
 });

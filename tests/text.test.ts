@@ -53,6 +53,7 @@ test("the hours are one message, numbered straight through the periods", () => {
         msg("item_hora", { n: 2, hora: 570 }),
         msg("cabecalho_periodo", { periodo: "tarde" }),
         msg("item_hora", { n: 3, hora: 840 }),
+        msg("item_voltar", { n: 4 }),
       ],
     }),
   );
@@ -67,9 +68,9 @@ test("the hours are one message, numbered straight through the periods", () => {
       "",
       "☀️ Tarde",
       "3 - 14:00",
+      "4 - Voltar",
       "",
       "Responde com o número ou com o horário.",
-      "Se nenhum servir, diz voltar que eu mostro os outros dias.",
     ].join("\n"),
   );
 });

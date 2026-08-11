@@ -21,6 +21,7 @@ export type MessageKey =
   | "saudacao"
   | "menu"
   | "nao_entendi"
+  | "item_voltar"
   | "despedida"
   | "humano"
   // informações
