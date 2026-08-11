@@ -20,6 +20,12 @@ export type Service = {
   price: number;
 };
 
+/**
+ * As formas de pagamento que existem. Quais delas a barbearia aceita, e em que
+ * ordem elas aparecem na comanda, é a lista em `SHOP.payments`.
+ */
+export type PaymentId = "dinheiro" | "pix" | "debito" | "credito";
+
 /** `[start, end)` in minutes since midnight. */
 export type Interval = { start: Minutes; end: Minutes };
 
@@ -39,6 +45,16 @@ export type Shop = {
   address: string;
   maps: string;
   phone: string;
+  /**
+   * Os números que o bot atende como barbeiro.
+   *
+   * É uma lista, e não um número, porque a barbearia tem uma cadeira mas pode
+   * ter duas pessoas com a chave: o dono e quem fecha o caixa no sábado. Quem
+   * está aqui conversa com a outra tabela de estados e vê a agenda inteira;
+   * quem não está é cliente, e nenhuma pergunta do fluxo do cliente é capaz de
+   * mostrar o horário de outra pessoa.
+   */
+  barbers: string[];
   services: Service[];
   /**
    * Opening intervals per weekday, indexed by `Weekday` (0 is domingo).
@@ -56,6 +72,8 @@ export type Shop = {
   horizonDays: number;
   /** Days the shop is closed regardless of the weekday. */
   holidays: Day[];
+  /** As formas de pagamento aceitas, na ordem em que a comanda as oferece. */
+  payments: PaymentId[];
 };
 
 export const SHOP: Shop = {
@@ -64,6 +82,7 @@ export const SHOP: Shop = {
   address: "Rua das Palmeiras, 240, Centro",
   maps: "https://maps.google.com/?q=Rua+das+Palmeiras+240",
   phone: "5511999990000",
+  barbers: ["5511999990000"],
   services: [
     { id: "corte", name: "Corte", minutes: 60, price: 4500 },
     { id: "barba", name: "Barba", minutes: 60, price: 3500 },
@@ -87,8 +106,13 @@ export const SHOP: Shop = {
   minNotice: 30,
   horizonDays: 14,
   holidays: ["2026-09-07", "2026-12-25", "2027-01-01"],
+  payments: ["dinheiro", "pix", "debito", "credito"],
 };
 
 export function serviceById(shop: Shop, id: ServiceId): Service | null {
   return shop.services.find((service) => service.id === id) ?? null;
+}
+
+export function isBarber(shop: Shop, phone: string): boolean {
+  return shop.barbers.includes(phone);
 }

@@ -8,6 +8,7 @@
  * against a database without a line changing.
  */
 
+import type { Comanda } from "./comanda.ts";
 import type { ServiceId } from "./shop.ts";
 import type { Day, Minutes, Moment } from "./time.ts";
 import { compare } from "./time.ts";
@@ -28,11 +29,17 @@ export type Agenda = Appointment[];
 
 /**
  * Remarcar is not a third effect: it is a cancel and a book in the same turn.
- * Keeping the set at two means the adapter has two cases to implement forever.
+ * Keeping the set small means the adapter has few cases to implement forever.
+ *
+ * `close` is the one addition the barber's side asks for, and it is here
+ * because it is a different write, not a different way of writing the same
+ * thing: `book` and `cancel` move a promise in the agenda, `close` records what
+ * happened in the comandas. Everything else the barber does is a question.
  */
 export type Effect =
   | { kind: "book"; appointment: Appointment }
-  | { kind: "cancel"; id: string };
+  | { kind: "cancel"; id: string }
+  | { kind: "close"; comanda: Comanda };
 
 /**
  * The id is derived from the booking, not generated.
@@ -47,12 +54,15 @@ export function appointmentId(phone: string, day: Day, start: Minutes): string {
   return `${phone}-${day}-${start}`;
 }
 
+/** Fechar uma comanda não mexe na agenda: o horário aconteceu, e continua lá. */
 export function apply(agenda: Agenda, effect: Effect): Agenda {
   switch (effect.kind) {
     case "book":
       return sorted([...agenda.filter((a) => a.id !== effect.appointment.id), effect.appointment]);
     case "cancel":
       return agenda.filter((a) => a.id !== effect.id);
+    case "close":
+      return agenda;
   }
 }
 
