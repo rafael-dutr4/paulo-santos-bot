@@ -65,11 +65,42 @@ test("o relatório do período semeado sai com linhas diferentes", () => {
   assert.ok(mes.porPagamento.length > 1, "as formas de pagamento têm que variar");
 });
 
-test("semear duas vezes não empilha atendimento em cima de dia cheio", () => {
-  const uma = semeado();
-  const outra = write(uma, historico(SHOP, uma, AGORA));
-  assert.equal(outra.agenda.length, uma.agenda.length);
-  assert.equal(outra.comandas.length, uma.comandas.length);
+test("clicar de novo completa os dias e para; nenhum dia passa do tamanho", () => {
+  // A garantia é o limite por dia, não a igualdade: um dia que ficou com dois
+  // atendimentos (hoje, onde só entra o que já terminou) ganha os que faltam no
+  // clique seguinte. O que não pode é crescer sem parar.
+  let db = semeado();
+  const tamanhos = [db.agenda.length];
+  for (let clique = 0; clique < 4; clique++) {
+    db = write(db, historico(SHOP, db, AGORA));
+    tamanhos.push(db.agenda.length);
+  }
+
+  assert.equal(tamanhos.at(-1), tamanhos.at(-2), "parou de crescer");
+  for (const day of new Set(db.agenda.map((a) => a.day))) {
+    const doDia = db.agenda.filter((a) => a.day === day).length;
+    assert.ok(doDia <= 4, `${day} ficou com ${doDia} atendimentos`);
+  }
+});
+
+test("um dia onde o cliente já marcou é completado, não pulado", () => {
+  // É o caso de verdade: o simulador tem um horário marcado na conversa do
+  // cliente, e é justamente o dia de hoje que o barbeiro quer ver cheio.
+  const marcado = {
+    id: "meu",
+    day: AGORA.day,
+    start: 9 * 60,
+    minutes: 60,
+    serviceId: "corte",
+    clientName: "Rafa",
+    phone: "5511911111111",
+  };
+  const antes = write(emptyDb(), [{ kind: "book", appointment: marcado }]);
+  const db = write(antes, historico(SHOP, antes, AGORA));
+
+  const hoje = db.agenda.filter((a) => a.day === AGORA.day);
+  assert.ok(hoje.length > 1, "o dia de hoje ficou com o horário do cliente e mais nada");
+  assert.ok(pending(db.agenda, db.comandas, AGORA).length > 1, "e há comanda para fechar");
 });
 
 test("o futuro ocupa horários que ainda vão acontecer", () => {

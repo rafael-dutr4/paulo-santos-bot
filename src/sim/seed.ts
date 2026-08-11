@@ -91,21 +91,30 @@ export function historico(shop: Shop, db: Db, now: Moment): Effect[] {
   for (let atras = DIAS_ATRAS; atras >= 0; atras--) {
     const day = addDays(now.day, -atras);
     if (!isOpen(shop, day)) continue;
-    // Um dia que já tem gente marcada fica como está. Sem isto, clicar duas
-    // vezes empilharia um segundo turno de atendimentos nos buracos que
-    // sobraram, e o barbeiro leria um dia que nunca existiu.
-    if (atual.agenda.some((a) => a.day === day)) continue;
     const passado = day !== now.day;
 
     for (const fatia of ESPALHADOS) {
+      // Cada dia tem um tamanho, e quem já está marcado conta. É o que faz
+      // clicar duas vezes não empilhar um segundo turno de atendimentos nos
+      // buracos que sobraram, sem pular um dia onde o cliente já marcou —
+      // esse dia é justamente o que o barbeiro quer ver cheio.
+      //
+      // Clicar de novo pode completar um dia que ficou curto (hoje, onde só
+      // entra o que já terminou), e aí para: o limite é por dia, não por
+      // clique, e é ele que garante que nada cresce sem fim.
+      if (atual.agenda.filter((a) => a.day === day).length >= ESPALHADOS.length) break;
+
       const service = shop.services[n % shop.services.length]!;
       // O relógio da semeadura é a meia-noite daquele dia: para trás, o que
-      // interessa é a grade inteira, e não o que ainda dá para marcar.
-      const livres = freeSlots(shop, atual.agenda, day, service, { day, at: 0 });
+      // interessa é a grade inteira, e não o que ainda dá para marcar. Hoje só
+      // conta o que já terminou, e o corte é na lista de candidatos, antes de
+      // escolher: cortar depois deixaria o dia com menos gente do que cabe, e
+      // o clique seguinte viria completar o que este deixou passar.
+      const livres = freeSlots(shop, atual.agenda, day, service, { day, at: 0 }).filter(
+        (start) => passado || compare({ day, at: start + service.minutes }, now) <= 0,
+      );
       const start = escolher(livres, fatia);
       if (start === undefined) continue;
-      // Hoje só conta o que já terminou. O resto do dia ainda vai acontecer.
-      if (!passado && compare({ day, at: start + service.minutes }, now) > 0) continue;
 
       const cliente = CLIENTES[n % CLIENTES.length]!;
       const appointment = marcar(day, start, service, cliente);
