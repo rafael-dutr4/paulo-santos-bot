@@ -1,0 +1,29 @@
+# O outro lado do aviso: quem só esqueceu diz não e cai na lista dos seus
+# horários, de onde dá para cancelar ou remarcar.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+# agenda: 2026-08-11 09:00 corte 5511911111111 Rafa
+
+> oi
+< saudacao
+< menu
+
+> 1
+< ja_tem_horario
+
+> não
+< meus_agendamentos
+
+> 1
+< o_que_fazer
+
+> 1
+< confirmar_cancelamento
+
+> sim
+< cancelado
+< menu
+
+# Sem horário nenhum, o aviso não aparece e o menu leva direto aos serviços.
+> 1
+< escolher_servico

@@ -46,7 +46,7 @@ Opções do menu:
 
 | opção | vai para |
 | --- | --- |
-| 1 | `escolher_servico` |
+| 1 | `ja_tem_horario` se já houver um marcado, senão `escolher_servico` |
 | 2 | `meus_agendamentos`, ou `sem_agendamentos` se não houver nenhum |
 | 3 | `precos` |
 | 4 | `horarios` |
@@ -60,6 +60,7 @@ Opções do menu:
 
 | estado | comportamento |
 | --- | --- |
+| `ja_tem_horario` | Quem já tem horário marcado lê quais são antes de marcar outro. `sim` segue para `escolher_servico`, `não` leva a `meus_agendamentos`. |
 | `escolher_servico` | Lista os serviços com preço e duração. Guarda a lista nas ofertas da sessão. Vai para `escolher_dia`, ou `sem_horarios` se não houver dia livre. |
 | `escolher_dia` | Lista os próximos dias que têm horário livre para o serviço escolhido. Dia fechado e dia lotado não aparecem. |
 | `escolher_hora` | Todos os horários livres do dia numa mensagem só, numerados de ponta a ponta, com manhã e tarde como título para dar respiro. Aceita o número da lista e também a hora digitada (`14:30`, `14h30`, `às 14h30`), sempre conferida contra o que foi oferecido. |
@@ -88,6 +89,10 @@ barbearia dentro do leitor de horas.
 | `slot_ocupado` | O horário foi ocupado entre a oferta e o "sim". Volta para `escolher_hora` com a lista recalculada. |
 | `nao_agendado` | O cliente disse não. Nada foi marcado. |
 | `sem_horarios` | Não há horário livre no horizonte da agenda. |
+
+O aviso não impede nada: marcar dois horários é permitido, porque o cliente que
+corta o cabelo e leva o filho faz isso. Ele existe para quem esqueceu — e o
+`não` leva justamente para onde dá para cancelar ou remarcar o que já existe.
 
 A reserva sai do motor como efeito, não como escrita:
 

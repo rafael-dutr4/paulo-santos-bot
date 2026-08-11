@@ -81,7 +81,18 @@ const menu: State = {
   // gives up halfway through a booking does not carry half a draft around.
   enter: (session) => ({ session: clearDraft(session), messages: [msg("menu")] }),
   on: [
-    { match: option(1), go: "escolher_servico" },
+    {
+      // Quem já tem horário marcado é avisado antes de marcar outro. Marcar
+      // dois é permitido — o cliente que corta o cabelo e leva o filho faz
+      // isso —, mas quem esqueceu que já tinha precisa ser lembrado, e não
+      // descobrir na semana seguinte com dois horários no nome.
+      match: option(1),
+      go: (session, ctx) =>
+        upcoming(ctx.agenda, session.phone, ctx.now).length > 0
+          ? "ja_tem_horario"
+          : "escolher_servico",
+      exits: ["ja_tem_horario", "escolher_servico"],
+    },
     {
       match: option(2),
       go: (session, ctx) =>
@@ -337,6 +348,40 @@ function confirmationOf(key: "agendado" | "remarcado"): Enter {
   };
 }
 
+/**
+ * O aviso antes do segundo horário.
+ *
+ * Ele não impede nada: quem quer mesmo dois horários diz sim e segue pelo mesmo
+ * caminho de sempre. Quem esqueceu diz não e cai na lista dos seus horários, de
+ * onde dá para cancelar ou remarcar — que é o que ele queria fazer desde o
+ * começo, sem saber o nome disso.
+ */
+const jaTemHorario: State = {
+  enter: (session, ctx) => {
+    const mine = upcoming(ctx.agenda, session.phone, ctx.now);
+    if (mine.length === 0) return { session, messages: [], go: "escolher_servico" };
+    return {
+      session,
+      messages: [
+        msg("ja_tem_horario", {
+          itens: mine.map((a) =>
+            msg("item_marcado", {
+              servico: serviceById(ctx.shop, a.serviceId)?.name ?? a.serviceId,
+              dia: a.day,
+              hora: a.start,
+            }),
+          ),
+        }),
+      ],
+    };
+  },
+  exits: ["escolher_servico"],
+  on: [
+    { match: yes, go: "escolher_servico" },
+    { match: no, go: "meus_agendamentos" },
+  ],
+};
+
 const meusAgendamentos: State = {
   enter: (session, ctx) => {
     const mine = upcoming(ctx.agenda, session.phone, ctx.now);
@@ -478,6 +523,7 @@ export const FLOW: Flow = {
     humano: { enter: says(msg("humano")), goto: "inicio" },
     despedida: { enter: says(msg("despedida")), goto: "inicio" },
 
+    ja_tem_horario: jaTemHorario,
     escolher_servico: escolherServico,
     escolher_dia: escolherDia,
     escolher_hora: escolherHora,

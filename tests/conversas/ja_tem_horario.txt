@@ -1,0 +1,35 @@
+# Quem já tem horário é avisado antes de marcar outro. Dizer sim segue pelo
+# mesmo caminho de sempre: marcar dois é permitido.
+# now: 2026-08-10 10:00
+# phone: 5511911111111
+# agenda: 2026-08-11 09:00 corte 5511911111111 Rafa
+
+> oi
+< saudacao
+< menu
+
+> 1
+< ja_tem_horario
+
+> sim
+< escolher_servico
+
+> 1
+< escolher_dia
+
+> 2
+< escolher_hora
+
+> 10:00
+< pedir_nome
+
+> Rafa
+< resumo
+< confirmar
+
+> sim
+< agendado
+< menu
+
+= 2026-08-11 09:00 corte
+= 2026-08-12 10:00 corte

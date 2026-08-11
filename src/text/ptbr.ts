@@ -172,6 +172,17 @@ export const PTBR: Record<MessageKey, Template> = {
   endereco: () =>
     [`📍 Estamos na ${SHOP.address}.`, "", `No mapa: ${SHOP.maps}`].join("\n"),
 
+  ja_tem_horario: (w) =>
+    [
+      "Você já tem horário marcado 👇",
+      "",
+      str(w, "itens"),
+      "",
+      "Quer marcar outro além desse? (sim / não)",
+    ].join("\n"),
+  item_marcado: (w) =>
+    `· ${str(w, "servico")}, ${dia(str(w, "dia"))} às ${hora(num(w, "hora"))}`,
+
   escolher_servico: (w) => ["Qual serviço você quer?", "", str(w, "itens")].join("\n"),
   item_servico: (w) =>
     `${num(w, "n")} - ${str(w, "nome")} (${num(w, "minutos")} min, ${brl(num(w, "preco"))})`,

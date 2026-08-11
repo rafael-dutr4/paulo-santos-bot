@@ -28,6 +28,8 @@ export type MessageKey =
   | "horarios"
   | "endereco"
   // agendamento
+  | "ja_tem_horario"
+  | "item_marcado"
   | "escolher_servico"
   | "item_servico"
   | "escolher_dia"
