@@ -34,6 +34,7 @@ import {
   option,
   yes,
 } from "./match.ts";
+import { advance } from "../store.ts";
 import type { Message } from "./message.ts";
 import { msg } from "./message.ts";
 
@@ -500,6 +501,7 @@ function backFrom(session: Session): StateName {
 }
 
 export const FLOW: Flow = {
+  advance,
   start: "inicio",
   stuck: "humano",
   missLimit: 3,

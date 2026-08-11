@@ -43,8 +43,9 @@
 < salvo
 < catalogo
 
-# 11 é "novo serviço": nome, preço e tempo.
-> 11
+# A lista já tem a água de coco, então "novo serviço" andou de 11 para 12: o
+# que o bot mostra depois de escrever é o mundo com a escrita dentro.
+> 12
 < novo_servico
 
 > Sobrancelha
@@ -57,8 +58,9 @@
 < salvo
 < catalogo
 
-# A bala saiu de linha. Tirar não mexe em comanda nenhuma.
-> 10
+# Com a sobrancelha entre os serviços e a água de coco entre os produtos, a
+# bala é a 11.
+> 11
 < editar_produto
 
 > 2

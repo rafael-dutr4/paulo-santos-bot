@@ -87,6 +87,19 @@ export type Flow = {
   missLimit: number;
   /** Checked before the state's own transitions, so nobody gets trapped in a branch. */
   global: Transition[];
+  /**
+   * O mundo depois dos efeitos deste turno.
+   *
+   * O `ctx` é uma foto tirada no começo do turno, e um estado que escreve e
+   * mostra no mesmo turno mostraria a foto velha: o barbeiro salvava um preço
+   * novo e lia a lista com o preço antigo. Aqui a tabela diz como avançar o
+   * mundo, e o interpretador só chama — ele continua sem saber o que é uma
+   * agenda, uma comanda ou um preço.
+   *
+   * Sem isto, a regra passa a ser "um estado ou escreve ou mostra", que é uma
+   * regra que ninguém lembra na hora de escrever o vigésimo estado.
+   */
+  advance?: (ctx: Ctx, effects: Effect[]) => Ctx;
 };
 
 export type Outcome = { session: Session; messages: Message[]; effects: Effect[] };
@@ -127,7 +140,9 @@ export function run(flow: Flow, session: Session, raw: string, ctx: Ctx): Outcom
       ? picked.transition.go(moved, ctx)
       : picked.transition.go;
 
-  return enter(flow, moved, target, ctx, [], effects);
+  // O que o estado de destino lê já é o mundo com este turno dentro.
+  const depois = effects.length > 0 && flow.advance ? flow.advance(ctx, effects) : ctx;
+  return enter(flow, moved, target, depois, [], effects);
 }
 
 function pick(

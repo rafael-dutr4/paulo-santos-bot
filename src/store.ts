@@ -16,12 +16,12 @@
  * `Store` a reaproveita em vez de reescrever a regra de o que cada efeito faz.
  */
 
-import type { Session } from "./bot/session.ts";
+import type { Ctx, Session } from "./bot/session.ts";
 import type { Agenda, Effect } from "./shop/agenda.ts";
 import { apply as applyToAgenda } from "./shop/agenda.ts";
 import type { Comanda } from "./shop/comanda.ts";
 import type { Catalog } from "./shop/shop.ts";
-import { SHOP, catalogOf } from "./shop/shop.ts";
+import { SHOP, catalogOf, withCatalog } from "./shop/shop.ts";
 
 /**
  * Tudo que a barbearia guarda: o que foi prometido, o que aconteceu e o que
@@ -97,6 +97,27 @@ export function write(db: Db, effects: Effect[]): Db {
         };
     }
   }, db);
+}
+
+/**
+ * O mundo do motor, com os efeitos de um turno aplicados.
+ *
+ * É `write()` visto do outro lado: o mesmo cálculo, mas devolvendo o `Ctx` que
+ * o fluxo lê em vez do banco que a casca guarda. As duas tabelas de estado
+ * passam esta função para o interpretador, e é ela que faz um estado poder
+ * escrever e mostrar no mesmo turno.
+ */
+export function advance(ctx: Ctx, effects: Effect[]): Ctx {
+  const db = write(
+    { agenda: ctx.agenda, comandas: ctx.comandas, catalog: catalogOf(ctx.shop) },
+    effects,
+  );
+  return {
+    ...ctx,
+    agenda: db.agenda,
+    comandas: db.comandas,
+    shop: withCatalog(ctx.shop, db.catalog),
+  };
 }
 
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {

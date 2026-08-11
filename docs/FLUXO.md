@@ -11,6 +11,12 @@ Convenções:
 - **aceita** são as respostas que o estado entende.
 - **segue** é para onde ele vai sem esperar resposta.
 
+O `ctx` que o motor recebe é uma foto do mundo tirada no começo do turno, e a
+tabela diz como avançá-la (`advance`): um estado que emite um efeito e logo em
+seguida mostra uma lista mostra a lista com o efeito dentro. Sem isso a regra
+seria "um estado ou escreve ou mostra", que é uma regra que ninguém lembra na
+hora de escrever o vigésimo estado.
+
 ## Regras globais
 
 Valem em qualquer ponto, e são testadas antes das transições do estado. É por

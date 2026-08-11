@@ -44,6 +44,7 @@ import {
   when,
   yes,
 } from "./match.ts";
+import { advance } from "../store.ts";
 import type { Message } from "./message.ts";
 import { msg } from "./message.ts";
 import type { CatalogDraft, Choice, ComandaDraft, Ctx, Session, StateName } from "./session.ts";
@@ -879,6 +880,7 @@ function backFrom(session: Session): StateName {
 }
 
 export const BARBEIRO: Flow = {
+  advance,
   start: "inicio_barbeiro",
   // O barbeiro não fica preso: se ele digitar três coisas que o bot não
   // entende, o lugar para onde mandá-lo é o menu, não um humano — ele é o humano.
