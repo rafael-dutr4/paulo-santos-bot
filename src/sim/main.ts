@@ -8,16 +8,17 @@
  * horário aparecer na agenda da segunda, sem nenhuma ligação entre as telas.
  */
 
-import type { Appointment } from "../shop/agenda.ts";
-import { appointmentId } from "../shop/agenda.ts";
-import { SHOP, serviceById } from "../shop/shop.ts";
-import { daysWithSlots, freeSlots } from "../shop/slots.ts";
+import type { Effect } from "../shop/agenda.ts";
+import type { Shop } from "../shop/shop.ts";
+import { SHOP } from "../shop/shop.ts";
 import type { Moment } from "../shop/time.ts";
+import type { Db } from "../store.ts";
 import type { Bubble } from "./chat.ts";
 import { browserNow } from "./clock.ts";
 import type { Conversa } from "./conversa.ts";
 import { conversa } from "./conversa.ts";
 import { readClock, setClock, showAgenda, showSession } from "./panel.ts";
+import { futuro, historico } from "./seed.ts";
 import type { Saved } from "./store.ts";
 import { BARBER, PHONE, empty, load, save, store } from "./store.ts";
 import { tabs } from "./tabs.ts";
@@ -68,36 +69,13 @@ const barbeiro = wire(BARBER, {
 });
 
 /**
- * Enche a agenda com horários de outros clientes, para os horários livres
- * deixarem de ser a grade inteira e o cálculo ficar visível.
+ * As duas semeaduras, aplicadas pelo mesmo caminho de uma conversa.
+ *
+ * Elas devolvem `Effect[]`, então passam pelo mesmo `write()` que um "sim" do
+ * cliente: o banco semeado é um banco que uma conversa saberia produzir.
  */
-function seed(): void {
-  const at = readClock();
-  const corte = serviceById(SHOP, "corte")!;
-  const barba = serviceById(SHOP, "barba")!;
-  const days = daysWithSlots(SHOP, saved.db.agenda, corte, at, 2);
-  const novos: Appointment[] = [];
-
-  for (const [i, day] of days.entries()) {
-    const service = i === 0 ? corte : barba;
-    // Pega horários espalhados pelo dia, não os três primeiros.
-    const livres = freeSlots(SHOP, saved.db.agenda, day, service, at);
-    for (const start of [livres[1], livres[Math.floor(livres.length / 2)], livres.at(-2)]) {
-      if (start === undefined) continue;
-      const phone = "5511922222222";
-      novos.push({
-        id: appointmentId(phone, day, start),
-        day,
-        start,
-        minutes: service.minutes,
-        serviceId: service.id,
-        clientName: i === 0 ? "Zé" : "Marcos",
-        phone,
-      });
-    }
-  }
-
-  db.apply(novos.map((appointment) => ({ kind: "book", appointment })));
+function semear(quais: (shop: Shop, db: Db, now: Moment) => Effect[]): void {
+  db.apply(quais(SHOP, db.db(), readClock()));
   changed();
 }
 
@@ -150,7 +128,8 @@ function start(): void {
 
   el("reset").addEventListener("click", () => cliente.reset());
   el("reset-barbeiro").addEventListener("click", () => barbeiro.reset());
-  el("seed").addEventListener("click", seed);
+  el("seed").addEventListener("click", () => semear(futuro));
+  el("seed-historico").addEventListener("click", () => semear(historico));
   el("clear-agenda").addEventListener("click", () => {
     saved.db = { agenda: [], comandas: [] };
     changed();

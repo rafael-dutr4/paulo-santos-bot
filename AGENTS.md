@@ -46,11 +46,12 @@ src/text/     a língua do projeto: um lado escreve, o outro lê
   horas.ts      lê a hora em português ("duas e meia" -> 14:30 ou 02:30)
   datas.ts      lê o dia ("ontem", "10/08"), na ordem mais perto de hoje
   dinheiro.ts   lê o valor ("45", "R$ 45,50") em centavos
-src/sim/      the only place that touches the DOM
+src/sim/      the shell: the only place that touches the DOM
   main.ts       wiring
   conversa.ts   um turno: mensagem -> reply -> guardar, aplicar, responder
   chat.ts       the WhatsApp looking conversation
   store.ts      o Store da porta, em localStorage
+  seed.ts       encher o banco: o futuro do cliente e o histórico do barbeiro
   clock.ts      the injected now, and the time control
   panel.ts      the dev panel
   tabs.ts       as três telas: conversa, estado, barbeiro
