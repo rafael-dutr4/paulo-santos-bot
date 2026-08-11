@@ -98,3 +98,23 @@
 > 08:00
 < salvo
 < dias_horarios
+
+# E a semana inteira igual, em três perguntas e uma escrita só.
+> 8
+< editar_todos
+
+> 4
+< igual_abre
+
+> 09:00
+< igual_fecha
+
+> 19:00
+< igual_almoco
+
+> 12:00
+< almoco_ate
+
+> 13:00
+< salvo
+< dias_horarios

@@ -95,6 +95,15 @@ export type Draft = {
   weekday?: Weekday;
   /** Ou todos os dias que abrem, de uma vez. */
   todos?: boolean;
+  /**
+   * O expediente sendo montado para valer em todos os dias iguais.
+   *
+   * Ele fica aqui, e não no banco, porque enquanto o barbeiro responde as três
+   * perguntas nada aconteceu: a semana só muda na última resposta, e desistir
+   * no meio não deixa metade da semana com o horário novo e metade com o
+   * velho.
+   */
+  padrao?: { abre?: Minutes; fecha?: Minutes; almoco?: { start: Minutes; end: Minutes } };
   /** O começo do almoço, enquanto o fim ainda não foi dito. */
   almoco?: Minutes;
   /** A última hora dita, para a transição conferir o que o efeito fez. */

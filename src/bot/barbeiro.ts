@@ -80,7 +80,7 @@ const VOLTAR_PRODUTO = 3;
 const VOLTAR_RELATORIO = 5;
 const VOLTAR_DIA_ABERTO = 5;
 const VOLTAR_DIA_FECHADO = 2;
-const VOLTAR_TODOS = 4;
+const VOLTAR_TODOS = 5;
 
 // --- lendo o rascunho ------------------------------------------------------
 
@@ -886,6 +886,11 @@ const editarTodos: State = {
     { match: option(1), go: "mudar_abertura" },
     { match: option(2), go: "mudar_fechamento" },
     { match: option(3), go: "mudar_almoco" },
+    {
+      match: option(4),
+      act: (session) => ({ session: { ...session, draft: { todos: true, padrao: {} } } }),
+      go: "igual_abre",
+    },
     { match: option(VOLTAR_TODOS), go: backFrom, exits: BACK_TARGETS },
   ],
 };
@@ -1149,6 +1154,136 @@ const almocoAte: State = {
   ],
 };
 
+/**
+ * Deixar a semana inteira igual, em três perguntas.
+ *
+ * É o caso comum de uma barbearia: de segunda a sexta o dia é o mesmo, e o
+ * sábado é a exceção. Fazer isso pelo editor de campo em campo são três voltas
+ * pela mesma tela; aqui são três respostas seguidas e uma escrita só.
+ *
+ * Nada é salvo antes da última: desistir no meio não deixa metade da semana
+ * com o horário novo e metade com o velho. É a mesma regra da comanda, pela
+ * mesma razão.
+ */
+const igualAbre: State = {
+  enter: says(msg("igual_abre")),
+  back: "dias_horarios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match) => ({
+        session: { ...session, draft: { ...session.draft, padrao: { abre: match.number ?? 0 } } },
+      }),
+      go: "igual_fecha",
+    },
+  ],
+};
+
+const igualFecha: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("igual_fecha", { abre: session.draft.padrao?.abre ?? 0 })],
+  }),
+  back: "dias_horarios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match) => ({
+        session: {
+          ...session,
+          draft: {
+            ...session.draft,
+            padrao: { ...session.draft.padrao, fecha: match.number ?? 0 },
+          },
+        },
+      }),
+      go: (session) => (abreAntesDeFechar(session.draft.padrao) ? "igual_almoco" : "horario_invalido"),
+      exits: ["igual_almoco", "horario_invalido"],
+    },
+  ],
+};
+
+const igualAlmoco: State = {
+  enter: says(msg("igual_almoco")),
+  back: "dias_horarios",
+  on: [
+    {
+      match: either(option(0), keyword("sem", "direto", "nenhum")),
+      act: (session, _match, ctx) => ({ session, effects: padraoEmTodos(session, ctx) }),
+      go: "salvo",
+    },
+    {
+      match: anyHour,
+      act: (session, match) => ({
+        session: {
+          ...session,
+          draft: {
+            ...session.draft,
+            padrao: {
+              ...session.draft.padrao,
+              almoco: { start: match.number ?? 0, end: match.number ?? 0 },
+            },
+          },
+        },
+      }),
+      go: "igual_almoco_ate",
+    },
+  ],
+};
+
+const igualAlmocoAte: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("almoco_ate", { de: session.draft.padrao?.almoco?.start ?? 0 })],
+  }),
+  back: "dias_horarios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match, ctx) => {
+        const almoco = session.draft.padrao?.almoco;
+        if (!almoco) return { session };
+        const completo: Session = {
+          ...session,
+          draft: {
+            ...session.draft,
+            padrao: { ...session.draft.padrao, almoco: { ...almoco, end: match.number ?? 0 } },
+          },
+        };
+        return { session: completo, effects: padraoEmTodos(completo, ctx) };
+      },
+      go: (session, ctx) => (padraoEmTodos(session, ctx).length > 0 ? "salvo" : "horario_invalido"),
+      exits: ["salvo", "horario_invalido"],
+    },
+  ],
+};
+
+type Padrao = NonNullable<Session["draft"]["padrao"]>;
+
+const abreAntesDeFechar = (padrao: Padrao | undefined): boolean =>
+  padrao?.abre !== undefined && padrao.fecha !== undefined && padrao.abre < padrao.fecha;
+
+/**
+ * O mesmo expediente em todos os dias que abrem.
+ *
+ * Um almoço que não cabe dentro do dia não vira um dia sem almoço em silêncio:
+ * devolve nada, e o fluxo recusa. Perder a pausa sem ninguém avisar seria a
+ * pior forma de errar aqui.
+ */
+function padraoEmTodos(session: Session, ctx: Ctx): Effect[] {
+  const padrao = session.draft.padrao;
+  if (!abreAntesDeFechar(padrao) || !padrao) return [];
+  const { abre, fecha, almoco } = padrao as Required<Pick<Padrao, "abre" | "fecha">> & Padrao;
+  if (almoco && (almoco.start <= abre || almoco.end >= fecha || almoco.start >= almoco.end)) {
+    return [];
+  }
+  return alvos(session, ctx).map((weekday) => ({
+    kind: "hours" as const,
+    weekday,
+    intervals: intervalsOf({ abre, fecha, ...(almoco ? { almoco } : {}) }),
+  }));
+}
+
 // --- as datas fechadas -----------------------------------------------------
 
 /** As folgas de hoje para a frente. As que passaram não interessam mais. */
@@ -1405,11 +1540,22 @@ export const BARBEIRO: Flow = {
     dias_horarios: diasHorarios,
     editar_dia_semana: editarDiaSemana,
     editar_todos: editarTodos,
+    igual_abre: igualAbre,
+    igual_fecha: igualFecha,
+    igual_almoco: igualAlmoco,
+    igual_almoco_ate: igualAlmocoAte,
     mudar_abertura: mudarAbertura,
     mudar_fechamento: mudarFechamento,
     mudar_almoco: mudarAlmoco,
     almoco_ate: almocoAte,
-    horario_invalido: { enter: says(msg("horario_invalido")), goto: "editar_dia_semana" },
+    horario_invalido: {
+      enter: (session) => ({
+        session,
+        messages: [msg("horario_invalido")],
+        go: session.draft.weekday === undefined ? "dias_horarios" : "editar_dia_semana",
+      }),
+      exits: ["dias_horarios", "editar_dia_semana"],
+    },
     dias_fechados: diasFechados,
     pedir_dia_fechado: pedirDiaFechado,
     dia_fechado: { enter: says(msg("dia_fechado")), goto: "dias_fechados" },

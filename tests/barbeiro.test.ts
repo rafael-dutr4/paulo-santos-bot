@@ -230,3 +230,65 @@ test("um horário que não fecha em algum dia derruba a mudança inteira", () =>
   assert.match(dito, /Esse horário não fecha/);
   assert.equal(db.settings.hours[TERCA]?.[0]?.start, 9 * 60, "nada foi salvo");
 });
+
+test("deixar todos iguais pergunta o dia inteiro e repete nos que abrem", () => {
+  // 8 é "todos os dias", 4 é "deixar todos iguais".
+  const { db } = conversa(["oi", "6", "8", "4", "09:00", "19:00", "12:00", "13:00"]);
+
+  const esperado = [
+    { start: 9 * 60, end: 12 * 60 },
+    { start: 13 * 60, end: 19 * 60 },
+  ];
+  for (const dia of [2, 3, 4, 5, 6]) {
+    assert.deepEqual(db.settings.hours[dia], esperado, `dia ${dia}`);
+  }
+  // Segunda e domingo estavam fechados e continuam fechados.
+  assert.deepEqual(db.settings.hours[1], []);
+  assert.deepEqual(db.settings.hours[0], []);
+});
+
+test("iguais sem almoço é um intervalo só, em todos", () => {
+  const { db } = conversa(["oi", "6", "8", "4", "10:00", "18:00", "0"]);
+  assert.deepEqual(db.settings.hours[TERCA], [{ start: 10 * 60, end: 18 * 60 }]);
+  assert.deepEqual(db.settings.hours[6], [{ start: 10 * 60, end: 18 * 60 }]);
+});
+
+test("nada é escrito antes da última resposta", () => {
+  // Duas respostas dadas, a terceira não: a semana continua como estava.
+  const { db } = conversa(["oi", "6", "8", "4", "10:00", "18:00"]);
+  assert.deepEqual(db.settings.hours[TERCA], [
+    { start: 9 * 60, end: 12 * 60 },
+    { start: 14 * 60, end: 19 * 60 },
+  ]);
+});
+
+test("um almoço que não cabe no dia é recusado, e não vira dia sem almoço", () => {
+  const { dito, db } = conversa(["oi", "6", "8", "4", "09:00", "18:00", "19:00", "20:00"]);
+  assert.match(dito, /Esse horário não fecha/);
+  assert.deepEqual(db.settings.hours[TERCA], [
+    { start: 9 * 60, end: 12 * 60 },
+    { start: 14 * 60, end: 19 * 60 },
+  ]);
+});
+
+test("depois de igualar, um dia ainda se muda sozinho", () => {
+  // É o caso de sempre: de segunda a sexta igual, e o sábado diferente.
+  const igualados = conversa(["oi", "6", "8", "4", "09:00", "19:00", "12:00", "13:00"]).db;
+
+  let session: Session = newSession(BARBEIRO_PHONE, BARBEIRO.start);
+  let db = igualados;
+  // 6 é o sábado, 2 é mudar o fechamento.
+  for (const texto of ["oi", "6", "6", "2", "17:00"]) {
+    const ctx: Ctx = {
+      now: AGORA,
+      shop: withSettings(SHOP, db.settings),
+      agenda: db.agenda,
+      comandas: db.comandas,
+    };
+    const outcome = reply(session, texto, ctx);
+    session = outcome.session;
+    db = write(db, outcome.effects);
+  }
+  assert.equal(db.settings.hours[6]?.at(-1)?.end, 17 * 60, "o sábado ficou diferente");
+  assert.equal(db.settings.hours[TERCA]?.at(-1)?.end, 19 * 60, "e a terça não se mexeu");
+});

@@ -247,7 +247,11 @@ depender de alguém recompilar.
 | estado | comportamento |
 | --- | --- |
 | `dias_horarios` | A semana, de segunda a domingo, com o horário de cada dia ou "fechado", mais a linha de todos os dias e a das datas fechadas. |
-| `editar_todos` | O mesmo editor apontado para a semana inteira. Cada resposta mexe num campo só e deixa o resto de cada dia como estava — mudar a abertura de todos não iguala os fechamentos, porque o sábado fecha mais cedo e isso quase nunca é o que se quis dizer. Dia fechado continua fechado. |
+| `editar_todos` | O mesmo editor apontado para a semana inteira. De 1 a 3, cada resposta mexe num campo só e deixa o resto de cada dia como estava. |
+| `igual_abre` → `igual_fecha` → `igual_almoco` → `almoco_ate` | "Deixar todos iguais": pergunta o dia inteiro e repete em todos os que abrem. É o caso comum de uma barbearia — de segunda a sexta o dia é o mesmo, o sábado é a exceção —, e depois cada dia ainda se muda sozinho. Nada é escrito antes da última resposta. |
+
+Nos dois caminhos, dia fechado continua fechado: abrir a semana toda por engano
+seria o tipo de estrago que o bot não pode fazer com uma tecla.
 | `editar_dia_semana` | Abre, fecha, almoço e "fechar neste dia da semana". Num dia fechado só existe "abrir", e abrir copia o expediente de um dia que já abre. |
 | `mudar_abertura` / `mudar_fechamento` / `mudar_almoco` → `almoco_ate` | Aceitam a hora como o cliente já dizia (`18:00`, `seis da tarde`). Tirar o almoço é a opção `0`, porque não é uma hora — e ela só aparece nos dias que têm almoço. |
 | `horario_invalido` | Abrir depois de fechar não é horário, é engano. Nada é salvo — e com a semana inteira como alvo, um dia que não fecha derruba a mudança toda, porque salvar em cinco e pular o sexto em silêncio é pior do que recusar. |

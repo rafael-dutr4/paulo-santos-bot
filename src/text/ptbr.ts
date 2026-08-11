@@ -491,11 +491,26 @@ export const PTBR: Record<MessageKey, Template> = {
       "1 - Mudar a abertura",
       "2 - Mudar o fechamento",
       "3 - Mudar o almoço",
+      "4 - Deixar todos iguais",
       `${num(w, "voltar")} - Voltar`,
       "",
-      "Cada resposta mexe só no que ela diz: mudar a abertura não muda o",
-      "fechamento de ninguém. Dia fechado continua fechado.",
+      "Não altera dia já fechado.",
     ].join("\n"),
+
+  igual_abre: () =>
+    [
+      "Vou perguntar o dia inteiro e repetir em todos os dias que abrem.",
+      "Depois você ajusta o que for diferente, dia por dia.",
+      "",
+      "Abre que horas?",
+      "",
+      "Ou voltar.",
+    ].join("\n"),
+
+  igual_fecha: (w) => `Abre ${hora(num(w, "abre"))}. E fecha que horas?\n\nOu voltar.`,
+
+  igual_almoco: () =>
+    ["O almoço começa que horas?", "", "0 - Sem pausa pra almoço", "", "Ou voltar."].join("\n"),
 
   editar_dia_aberto: (w) => {
     const almoco =
