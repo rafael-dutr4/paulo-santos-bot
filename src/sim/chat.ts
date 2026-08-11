@@ -42,12 +42,29 @@ function element(bubble: Bubble): HTMLElement {
   // textContent e não innerHTML: o que o cliente digita não vira marcação.
   text.textContent = bubble.text;
 
-  const time = document.createElement("span");
-  time.className = "time";
-  time.textContent = bubble.at;
+  const meta = document.createElement("span");
+  meta.className = "meta";
+  meta.textContent = bubble.at;
+  // Os dois tiques azuis só existem do lado de quem mandou.
+  if (bubble.from === "cliente") meta.append(ticks());
 
-  node.append(text, time);
+  node.append(text, meta);
   return node;
+}
+
+/** Os dois tiques de "lido", desenhados à mão para não pesar uma imagem. */
+function ticks(): SVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "tique");
+  svg.setAttribute("viewBox", "0 0 20 14");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    "m7.6 12.2-4.5-4.5 1.3-1.3 3.2 3.2 7-7L15.9 4zm5.5 0-1.3-1.3 1.3-1.3 1.3 1.3zm5.6-8.2-7 7-1.3-1.3 7-7z",
+  );
+  svg.append(path);
+  return svg;
 }
 
 function dot(): HTMLElement {
@@ -56,6 +73,6 @@ function dot(): HTMLElement {
   return node;
 }
 
-function scroll(list: HTMLElement): void {
+export function scroll(list: HTMLElement): void {
   list.scrollTop = list.scrollHeight;
 }

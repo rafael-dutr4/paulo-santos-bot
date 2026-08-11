@@ -44,7 +44,14 @@ src/sim/      the only place that touches the DOM
   store.ts      session and agenda in localStorage
   clock.ts      the injected now, and the time control
   panel.ts      the dev panel
+  tabs.ts       as três telas: conversa, estado, barbeiro
+  viewport.ts   o encaixe da tela quando o teclado do celular abre
 ```
+
+A página é uma tela só, do tamanho da janela, e nada nela rola além do miolo da
+vista aberta. Quem manda na altura é `viewport.ts`, pelo `visualViewport`: com o
+teclado aberto o `#app` encolhe, então o campo de mensagem encosta no teclado em
+vez de ficar embaixo dele.
 
 ## Toolchain
 

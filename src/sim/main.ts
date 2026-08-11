@@ -18,11 +18,13 @@ import { daysWithSlots, freeSlots } from "../shop/slots.ts";
 import type { Moment } from "../shop/time.ts";
 import { hhmm } from "../shop/time.ts";
 import { say } from "../text/say.ts";
-import { append, paint, typing } from "./chat.ts";
+import { append, paint, scroll, typing } from "./chat.ts";
 import { browserNow } from "./clock.ts";
 import { readClock, setClock, showAgenda, showSession } from "./panel.ts";
 import type { Saved } from "./store.ts";
 import { PHONE, empty, load, save } from "./store.ts";
+import { tabs } from "./tabs.ts";
+import { fitToKeyboard } from "./viewport.ts";
 
 /** Quanto o bot "digita" entre um balão e outro. */
 const DELAY = 550;
@@ -114,14 +116,35 @@ function start(): void {
   paint(el("chat"), saved.transcript);
   store();
 
+  const abas = tabs(el("abas"), (id) => {
+    // Voltar para a conversa depois de mexer no painel: o fim da lista é o que
+    // interessa, e um `div` escondido não guarda o `scrollTop`.
+    if (id === "aba-conversa") scroll(el("chat"));
+  });
+  // O teclado encolhe o `#app`, então o balão de baixo sai de vista se ninguém
+  // rolar. Só a conversa se importa; as outras vistas rolam sozinhas.
+  fitToKeyboard(() => {
+    if (abas.current() === "aba-conversa") scroll(el("chat"));
+  });
+
+  const field = el<HTMLInputElement>("entrada");
+  // Sem nada escrito o botão é um microfone, como no aplicativo.
+  field.addEventListener("input", () => {
+    el("enviar").classList.toggle("escrevendo", field.value.trim() !== "");
+  });
+
   el<HTMLFormElement>("composer").addEventListener("submit", (event) => {
     event.preventDefault();
-    const field = el<HTMLInputElement>("entrada");
     const text = field.value.trim();
     if (text === "") return;
     field.value = "";
+    el("enviar").classList.remove("escrevendo");
     void send(text);
   });
+
+  // A seta do cabeçalho não tem para onde voltar: o simulador é uma conversa
+  // só. Ela leva ao painel, que é o que existe "atrás" desta tela.
+  el("voltar").addEventListener("click", () => abas.select("aba-estado"));
 
   el("clock-now").addEventListener("click", () => {
     setClock(browserNow());
