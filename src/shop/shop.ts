@@ -130,15 +130,21 @@ export const SHOP: Shop = {
     { id: "cerveja", name: "Cerveja", price: 1000 },
     { id: "bala", name: "Bala", price: 200 },
   ],
-  // "Atendimento: segunda a sábado, 8h às 20h", direto, como está no cartaz.
+  /**
+   * "Atendimento: segunda a sábado, 8h às 20h", com o almoço no meio.
+   *
+   * O almoço não é regra em lugar nenhum do código: ele é o buraco entre os
+   * dois intervalos do dia. Por isso dar e tirar almoço é escrever outra lista
+   * de intervalos, e não ligar e desligar um campo.
+   */
   hours: {
     0: [], // domingo, fechado
-    1: [{ start: 8 * 60, end: 20 * 60 }],
-    2: [{ start: 8 * 60, end: 20 * 60 }],
-    3: [{ start: 8 * 60, end: 20 * 60 }],
-    4: [{ start: 8 * 60, end: 20 * 60 }],
-    5: [{ start: 8 * 60, end: 20 * 60 }],
-    6: [{ start: 8 * 60, end: 20 * 60 }],
+    1: [{ start: 8 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
+    2: [{ start: 8 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
+    3: [{ start: 8 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
+    4: [{ start: 8 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
+    5: [{ start: 8 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
+    6: [{ start: 8 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
   },
   periods: [
     { id: "manha", from: 0, to: 12 * 60 },

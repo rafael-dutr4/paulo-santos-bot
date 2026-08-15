@@ -2,26 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import type { Agenda, Appointment } from "../src/shop/agenda.ts";
-import type { Shop } from "../src/shop/shop.ts";
 import { SHOP, serviceById } from "../src/shop/shop.ts";
 import { daysWithSlots, freeSlots, isOpen, overlaps } from "../src/shop/slots.ts";
 import { hhmm } from "../src/shop/time.ts";
 
 const corte = serviceById(SHOP, "corte")!;
 const progressiva = serviceById(SHOP, "progressiva")!;
-
-/**
- * A barbearia abre direto, das 08:00 às 20:00. O almoço não é regra em lugar
- * nenhum do código — ele é o buraco entre dois intervalos, e quem quer ver esse
- * buraco funcionando usa esta terça aqui, que tem um.
- */
-const ALMOCO: Shop = {
-  ...SHOP,
-  hours: {
-    ...SHOP.hours,
-    2: [{ start: 9 * 60, end: 12 * 60 }, { start: 14 * 60, end: 19 * 60 }],
-  },
-};
 
 /** 2026-08-10 é uma segunda, 2026-08-11 uma terça, 2026-08-16 um domingo. */
 const MONDAY = { day: "2026-08-10", at: 10 * 60 };
@@ -39,19 +25,15 @@ function booked(start: number, minutes: number, day = TUESDAY): Appointment {
   };
 }
 
-function times(
-  agenda: Agenda,
-  day = TUESDAY,
-  service = corte,
-  now = MONDAY,
-  shop = SHOP,
-): string[] {
-  return freeSlots(shop, agenda, day, service, now).map(hhmm);
+function times(agenda: Agenda, day = TUESDAY, service = corte, now = MONDAY): string[] {
+  return freeSlots(SHOP, agenda, day, service, now).map(hhmm);
 }
 
-/** Um dia sem um minuto livre: das 08:00 às 20:00, de meia em meia. */
+/** Um dia sem um minuto livre: 08:00 às 12:00 e 14:00 às 20:00, de meia em meia. */
 function fullDay(day = TUESDAY): Appointment[] {
-  return Array.from({ length: 24 }, (_, i) => booked(480 + i * 30, 30, day));
+  const manha = Array.from({ length: 8 }, (_, i) => booked(480 + i * 30, 30, day));
+  const tarde = Array.from({ length: 12 }, (_, i) => booked(840 + i * 30, 30, day));
+  return [...manha, ...tarde];
 }
 
 test("two intervals overlap when each starts before the other ends", () => {
@@ -66,26 +48,19 @@ test("a closed day has no hours at all", () => {
   assert.deepEqual(times([], "2026-08-09"), []);
 });
 
-test("an empty day is the whole grid, up to what still fits before closing", () => {
+test("an empty day is the whole grid, and the lunch break is just the gap", () => {
   const hours = times([]);
   assert.equal(hours[0], "08:00");
   assert.equal(hours.at(-1), "19:00");
-  assert.ok(hours.includes("13:00"), "o dia é direto, sem almoço");
-  assert.ok(!hours.includes("19:30"), "um corte às 19:30 passaria do fechamento das 20:00");
-});
-
-test("the lunch break is just the gap between two intervals", () => {
-  const hours = times([], TUESDAY, corte, MONDAY, ALMOCO);
-  assert.equal(hours[0], "09:00");
-  assert.equal(hours.at(-1), "18:00");
   assert.ok(hours.includes("11:00"));
   assert.ok(!hours.includes("11:30"), "um corte às 11:30 passaria do fechamento das 12:00");
   assert.ok(!hours.includes("13:00"), "o almoço vai até as 14:00");
   assert.ok(hours.includes("14:00"));
+  assert.ok(!hours.includes("19:30"), "um corte às 19:30 passaria do fechamento das 20:00");
 });
 
 test("a longer service loses the slots that do not fit before the break", () => {
-  const hours = times([], TUESDAY, progressiva, MONDAY, ALMOCO);
+  const hours = times([], TUESDAY, progressiva);
   assert.ok(hours.includes("10:00"));
   assert.ok(!hours.includes("10:30"), "uma progressiva às 10:30 invadiria o almoço");
 });
