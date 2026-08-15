@@ -20,7 +20,7 @@
 < hora_indisponivel
 < escolher_hora
 
-> 09:00
+> 15:00
 < pedir_nome
 
 > Rafa
@@ -31,4 +31,4 @@
 < agendado
 < menu
 
-= 2026-08-11 09:00 corte
+= 2026-08-10 15:00 corte

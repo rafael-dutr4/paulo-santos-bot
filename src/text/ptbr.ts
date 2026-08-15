@@ -155,7 +155,7 @@ function lista(itens: string[]): string {
 
 export const PTBR: Record<MessageKey, Template> = {
   saudacao: () =>
-    `Opa! Aqui é o assistente da ${SHOP.name} 💈\nPosso te ajudar com agendamento e informações.`,
+    `Opa! Aqui é o assistente do ${SHOP.name} 💈\nPosso te ajudar com agendamento e informações.`,
 
   menu: () =>
     [

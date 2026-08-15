@@ -77,8 +77,6 @@ test("the hours are one message, numbered straight through the periods", () => {
 
 test("the opening hours group the days that are the same", () => {
   const text = say(msg("horarios"));
-  assert.ok(text.includes("terça-feira a quinta-feira: 09:00 às 12:00 e 14:00 às 19:00"), text);
-  assert.ok(text.includes("sexta-feira: 09:00 às 12:00 e 14:00 às 20:00"), text);
-  assert.ok(text.includes("sábado: 08:00 às 17:00"), text);
-  assert.ok(text.includes("Fechado: segunda-feira e domingo"), text);
+  assert.ok(text.includes("segunda-feira a sábado: 08:00 às 20:00"), text);
+  assert.ok(text.includes("Fechado: domingo"), text);
 });

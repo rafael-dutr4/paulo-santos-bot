@@ -1,4 +1,4 @@
-# Paulo Santos Bot
+# Paulin Studio Bot
 
 Um chatbot de regras para barbearia, em pt-br. Ele responde as perguntas de sempre (preços, horários, endereço) e agenda o horário, por um menu numerado.
 

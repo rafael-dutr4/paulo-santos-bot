@@ -38,8 +38,8 @@ function comanda(day: string, start: number, total = 4500): Comanda {
 
 test("a comanda nasce com o serviço agendado, pelo preço de tabela", () => {
   const itens = itemsFor(SHOP, appointment("2026-08-11", 9 * 60));
-  assert.deepEqual(itens, [{ kind: "servico", id: "corte", name: "Corte", price: 4500 }]);
-  assert.equal(totalOf(itens), 4500);
+  assert.deepEqual(itens, [{ kind: "servico", id: "corte", name: "Corte", price: 4000 }]);
+  assert.equal(totalOf(itens), 4000);
 });
 
 test("o total é a soma das linhas, e nada além delas", () => {

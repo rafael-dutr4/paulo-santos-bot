@@ -94,17 +94,33 @@ export type Shop = {
 };
 
 export const SHOP: Shop = {
-  name: "Barbearia Paulo Santos",
-  barber: "Paulo",
+  name: "Paulin Studio",
+  barber: "Paulin",
   address: "Rua das Palmeiras, 240, Centro",
   maps: "https://maps.google.com/?q=Rua+das+Palmeiras+240",
-  phone: "5511999990000",
-  barbers: ["5511999990000"],
+  phone: "5577999999999",
+  barbers: ["5577999999999"],
+  /**
+   * A tabela de preços da parede, na ordem em que ela está lá: barbearia,
+   * tratamentos e depois química. O tempo de cada um não está na parede — ele
+   * é o que a cadeira leva, e é o barbeiro quem acerta pela conversa.
+   */
   services: [
-    { id: "corte", name: "Corte", minutes: 60, price: 4500 },
-    { id: "barba", name: "Barba", minutes: 60, price: 3500 },
-    { id: "corte_barba", name: "Corte + barba", minutes: 120, price: 7000 },
-    { id: "pezinho", name: "Pezinho", minutes: 30, price: 2000 },
+    { id: "corte", name: "Corte", minutes: 60, price: 4000 },
+    { id: "barba", name: "Barba", minutes: 45, price: 4000 },
+    { id: "bigode", name: "Bigode", minutes: 15, price: 500 },
+    { id: "pezinho", name: "Acabamento / pezinho", minutes: 30, price: 1500 },
+    { id: "sobrancelha", name: "Sobrancelha", minutes: 15, price: 1500 },
+    { id: "cavanhaque", name: "Cavanhaque", minutes: 30, price: 2000 },
+    { id: "depilacao_nasal", name: "Depilação nasal", minutes: 15, price: 1500 },
+    { id: "limpeza_pele", name: "Limpeza de pele", minutes: 45, price: 4500 },
+    { id: "hidratacao_cabelo", name: "Hidratação no cabelo", minutes: 30, price: 2000 },
+    { id: "hidratacao_barba", name: "Hidratação na barba", minutes: 30, price: 2000 },
+    { id: "pigmentacao_cabelo", name: "Pigmentação no cabelo", minutes: 30, price: 3500 },
+    { id: "pigmentacao_barba", name: "Pigmentação na barba", minutes: 30, price: 3500 },
+    { id: "progressiva", name: "Progressiva / selagem", minutes: 120, price: 10000 },
+    { id: "platinado", name: "Platinado", minutes: 180, price: 16000 },
+    { id: "luzes_platinadas", name: "Luzes platinadas", minutes: 180, price: 16000 },
   ],
   products: [
     { id: "pomada", name: "Pomada", price: 3000 },
@@ -114,14 +130,15 @@ export const SHOP: Shop = {
     { id: "cerveja", name: "Cerveja", price: 1000 },
     { id: "bala", name: "Bala", price: 200 },
   ],
+  // "Atendimento: segunda a sábado, 8h às 20h", direto, como está no cartaz.
   hours: {
     0: [], // domingo, fechado
-    1: [], // segunda, fechado
-    2: [{ start: 9 * 60, end: 12 * 60 }, { start: 14 * 60, end: 19 * 60 }],
-    3: [{ start: 9 * 60, end: 12 * 60 }, { start: 14 * 60, end: 19 * 60 }],
-    4: [{ start: 9 * 60, end: 12 * 60 }, { start: 14 * 60, end: 19 * 60 }],
-    5: [{ start: 9 * 60, end: 12 * 60 }, { start: 14 * 60, end: 20 * 60 }],
-    6: [{ start: 8 * 60, end: 17 * 60 }], // sábado, direto
+    1: [{ start: 8 * 60, end: 20 * 60 }],
+    2: [{ start: 8 * 60, end: 20 * 60 }],
+    3: [{ start: 8 * 60, end: 20 * 60 }],
+    4: [{ start: 8 * 60, end: 20 * 60 }],
+    5: [{ start: 8 * 60, end: 20 * 60 }],
+    6: [{ start: 8 * 60, end: 20 * 60 }],
   },
   periods: [
     { id: "manha", from: 0, to: 12 * 60 },

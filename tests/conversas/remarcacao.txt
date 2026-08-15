@@ -30,4 +30,4 @@
 < remarcado
 < menu
 
-= 2026-08-12 09:00 corte
+= 2026-08-11 09:00 corte

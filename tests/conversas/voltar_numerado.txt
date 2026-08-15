@@ -11,8 +11,8 @@
 > 1
 < escolher_servico
 
-# Quatro serviços, então o 5 é a saída. Atrás dos serviços está o menu.
-> 5
+# Quinze serviços, então o 16 é a saída. Atrás dos serviços está o menu.
+> 16
 < menu
 
 > 1

@@ -1,7 +1,7 @@
 # O cliente não veio. A falta também fecha a comanda: sem isso o horário fica
 # pendente para sempre e o relatório não sabe contar quem faltou.
 # now: 2026-08-11 10:00
-# phone: 5511999990000
+# phone: 5577999999999
 # agenda: 2026-08-11 09:00 corte 5511922222222 Zé
 
 > oi

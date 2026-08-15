@@ -24,7 +24,7 @@ import type { Db, Store } from "../store.ts";
 import { emptyDb, write } from "../store.ts";
 import type { Bubble } from "./chat.ts";
 
-const KEY = "paulo-santos-bot";
+const KEY = "paulin-studio-bot";
 
 /**
  * A versão do que está guardado.

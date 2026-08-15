@@ -1,5 +1,5 @@
 {
-  "name": "paulo-santos-bot",
+  "name": "paulin-studio-bot",
   "version": "0.1.0",
   "description": "Um chatbot de regras para barbearia, com um simulador de WhatsApp para validar o fluxo",
   "type": "module",

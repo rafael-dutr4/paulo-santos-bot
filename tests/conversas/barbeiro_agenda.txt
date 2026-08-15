@@ -1,7 +1,7 @@
 # O barbeiro chega e olha o dia. O telefone está em SHOP.barbers, então o
 # mesmo "oi" que abre o menu do cliente abre o menu dele.
 # now: 2026-08-11 10:00
-# phone: 5511999990000
+# phone: 5577999999999
 # agenda: 2026-08-11 09:00 corte 5511922222222 Zé
 # agenda: 2026-08-11 14:00 barba 5511933333333 Marcos
 # agenda: 2026-08-12 09:00 corte 5511944444444 João

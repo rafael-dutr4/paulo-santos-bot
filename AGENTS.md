@@ -1,4 +1,4 @@
-# Paulo Santos Bot Agent Guide
+# Paulin Studio Bot Agent Guide
 
 ## Mission
 

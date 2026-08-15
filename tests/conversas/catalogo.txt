@@ -1,7 +1,7 @@
 # O barbeiro mexe na tabela pela conversa: sobe o preço do corte, encurta o
 # pezinho, cria um produto novo e tira um da lista.
 # now: 2026-08-11 10:00
-# phone: 5511999990000
+# phone: 5577999999999
 
 > oi
 < saudacao_barbeiro
@@ -21,7 +21,7 @@
 < salvo
 < catalogo
 
-# 4 é o pezinho: tempo novo, dito como o barbeiro fala.
+# 4 é o acabamento: tempo novo, dito como o barbeiro fala.
 > 4
 < editar_servico
 
@@ -32,8 +32,8 @@
 < salvo
 < catalogo
 
-# 12 é "novo produto", a última linha da lista.
-> 12
+# 15 serviços e 6 produtos, então 23 é "novo produto", a última linha da lista.
+> 23
 < novo_produto
 
 > Água de coco
@@ -43,24 +43,24 @@
 < salvo
 < catalogo
 
-# A lista já tem a água de coco, então "novo serviço" andou de 11 para 12: o
+# A lista já tem a água de coco, então "novo serviço" andou de 22 para 23: o
 # que o bot mostra depois de escrever é o mundo com a escrita dentro.
-> 12
+> 23
 < novo_servico
 
-> Sobrancelha
+> Relaxamento
 < novo_preco
 
-> 15
+> 60
 < novo_tempo
 
 > meia hora
 < salvo
 < catalogo
 
-# Com a sobrancelha entre os serviços e a água de coco entre os produtos, a
-# bala é a 11.
-> 11
+# Com o relaxamento entre os serviços e a água de coco entre os produtos, a
+# bala é a 22.
+> 22
 < editar_produto
 
 > 2
@@ -70,13 +70,24 @@
 < tirado
 < catalogo
 
-# O catálogo no fim: corte a 50, pezinho de 20 minutos, sobrancelha nova, água
-# de coco nova e a bala fora.
+# O catálogo no fim: corte a 50, acabamento de 20 minutos, relaxamento novo,
+# água de coco nova e a bala fora.
 ~ servico corte 60 5000
-~ servico barba 60 3500
-~ servico corte_barba 120 7000
-~ servico pezinho 20 2000
-~ servico sobrancelha 30 1500
+~ servico barba 45 4000
+~ servico bigode 15 500
+~ servico pezinho 20 1500
+~ servico sobrancelha 15 1500
+~ servico cavanhaque 30 2000
+~ servico depilacao_nasal 15 1500
+~ servico limpeza_pele 45 4500
+~ servico hidratacao_cabelo 30 2000
+~ servico hidratacao_barba 30 2000
+~ servico pigmentacao_cabelo 30 3500
+~ servico pigmentacao_barba 30 3500
+~ servico progressiva 120 10000
+~ servico platinado 180 16000
+~ servico luzes_platinadas 180 16000
+~ servico relaxamento 30 6000
 ~ produto pomada 3000
 ~ produto shampoo 4000
 ~ produto oleo_barba 5000

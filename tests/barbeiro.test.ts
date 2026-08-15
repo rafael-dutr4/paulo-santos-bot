@@ -52,24 +52,24 @@ test("o preço novo aparece na lista do mesmo turno em que foi salvo", () => {
 });
 
 test("o produto novo aparece na lista do mesmo turno em que foi criado", () => {
-  const { dito, db } = conversa(["oi", "5", "12", "Água de coco", "8,50"]);
+  const { dito, db } = conversa(["oi", "5", "23", "Água de coco", "8,50"]);
   assert.match(dito, /Água de coco · R\$ 8,50/, "a lista não trouxe o que acabou de nascer");
   assert.ok(db.settings.products.some((p) => p.id === "agua_de_coco"));
 });
 
 test("o serviço novo nasce com nome, preço e tempo, e o cliente passa a vê-lo", () => {
-  const { db } = conversa(["oi", "5", "11", "Sobrancelha", "15", "meia hora"]);
+  const { db } = conversa(["oi", "5", "22", "Relaxamento", "60", "meia hora"]);
   assert.deepEqual(db.settings.services.at(-1), {
-    id: "sobrancelha",
-    name: "Sobrancelha",
+    id: "relaxamento",
+    name: "Relaxamento",
     minutes: 30,
-    price: 1500,
+    price: 6000,
   });
 });
 
 test("tirar da lista tira, e a lista do mesmo turno já não mostra", () => {
-  // 10 é a bala, a última da prateleira inicial.
-  const { dito, db } = conversa(["oi", "5", "10", "2", "sim"]);
+  // 21 é a bala, a última da prateleira inicial.
+  const { dito, db } = conversa(["oi", "5", "21", "2", "sim"]);
   assert.ok(!db.settings.products.some((p) => p.id === "bala"));
   assert.doesNotMatch(dito, /Bala/);
 });
@@ -81,15 +81,15 @@ test("o produto não tem tempo, e o menu dele é um item mais curto", () => {
   assert.match(servico, /2 - Mudar o tempo/);
   assert.match(servico, /4 - Voltar/);
 
-  const { dito: produto } = conversa(["oi", "5", "10"]);
+  const { dito: produto } = conversa(["oi", "5", "21"]);
   assert.doesNotMatch(produto, /Mudar o tempo/);
   assert.match(produto, /3 - Voltar/);
 });
 
 test("toda lista termina em voltar, e ele é um passo atrás", () => {
-  // O catálogo tem 4 serviços, 6 produtos e as duas linhas de "novo": o 13 é a
+  // O catálogo tem 15 serviços, 6 produtos e as duas linhas de "novo": o 24 é a
   // saída. Atrás do catálogo está o menu.
-  const { dito: doSettingso } = conversa(["oi", "5", "13"]);
+  const { dito: doSettingso } = conversa(["oi", "5", "24"]);
   assert.match(doSettingso, /1 - Agenda de hoje/);
 
   // E atrás de um item do catálogo está o catálogo, não o menu: um passo, como
@@ -104,28 +104,30 @@ test("toda lista termina em voltar, e ele é um passo atrás", () => {
 const TERCA = 2;
 
 test("mudar o fechamento reescreve o intervalo, e o almoço continua onde estava", () => {
-  const { db } = conversa(["oi", "6", "2", "2", "18:00"]);
+  // A terça abre direto: primeiro o almoço, depois o fechamento novo.
+  const { db } = conversa(["oi", "6", "2", "3", "12:00", "13:00", "2", "2", "18:00"]);
   assert.deepEqual(db.settings.hours[TERCA], [
-    { start: 9 * 60, end: 12 * 60 },
-    { start: 14 * 60, end: 18 * 60 },
+    { start: 8 * 60, end: 12 * 60 },
+    { start: 13 * 60, end: 18 * 60 },
   ]);
 });
 
 test("dar almoço a um dia direto parte o intervalo em dois", () => {
-  // O sábado (6) abre 08:00 às 17:00, sem parar.
+  // O sábado (6) abre 08:00 às 20:00, sem parar.
   const { db } = conversa(["oi", "6", "6", "3", "12:00", "13:00"]);
   assert.deepEqual(db.settings.hours[6], [
     { start: 8 * 60, end: 12 * 60 },
-    { start: 13 * 60, end: 17 * 60 },
+    { start: 13 * 60, end: 20 * 60 },
   ]);
 });
 
 test("tirar o almoço é a opção zero, e junta os dois num intervalo só", () => {
-  const { dito } = conversa(["oi", "6", "2", "3"]);
+  const almoco = ["oi", "6", "2", "3", "12:00", "13:00"];
+  const { dito } = conversa([...almoco, "2", "3"]);
   assert.match(dito, /0 - Sem pausa pra almoço/);
 
-  const { db } = conversa(["oi", "6", "2", "3", "0"]);
-  assert.deepEqual(db.settings.hours[TERCA], [{ start: 9 * 60, end: 19 * 60 }]);
+  const { db } = conversa([...almoco, "2", "3", "0"]);
+  assert.deepEqual(db.settings.hours[TERCA], [{ start: 8 * 60, end: 20 * 60 }]);
 });
 
 test("num dia sem almoço a opção de tirar o almoço não aparece", () => {
@@ -135,15 +137,16 @@ test("num dia sem almoço a opção de tirar o almoço não aparece", () => {
 });
 
 test("abrir depois de fechar não é horário, é engano", () => {
-  const { dito, db } = conversa(["oi", "6", "2", "1", "20:00"]);
+  const { dito, db } = conversa(["oi", "6", "2", "1", "21:00"]);
   assert.match(dito, /Esse horário não fecha/);
-  assert.equal(db.settings.hours[TERCA]?.[0]?.start, 9 * 60, "nada foi salvo");
+  assert.equal(db.settings.hours[TERCA]?.[0]?.start, 8 * 60, "nada foi salvo");
 });
 
 test("abrir um dia fechado copia o expediente de um dia que já abre", () => {
-  // A segunda (1) é fechada, e a terça é o primeiro dia aberto da semana.
-  const { db } = conversa(["oi", "6", "1", "1"]);
-  assert.deepEqual(db.settings.hours[1], db.settings.hours[TERCA]);
+  // O domingo (7 na lista, que começa na segunda) é o dia fechado da semana, e
+  // a segunda é o primeiro dia aberto.
+  const { db } = conversa(["oi", "6", "7", "1"]);
+  assert.deepEqual(db.settings.hours[0], db.settings.hours[1]);
 });
 
 test("fechar um dia da semana com gente marcada é recusado, com os nomes", () => {
@@ -197,38 +200,40 @@ test("reabrir uma data devolve o dia", () => {
 });
 
 test("todos os dias de uma vez mudam só o campo que foi dito", () => {
-  // 8 é "todos os dias", e o sábado abre 08:00 enquanto a semana abre 09:00.
-  const { db } = conversa(["oi", "6", "8", "1", "10:00"]);
+  // Primeiro o sábado fecha mais cedo, para os dias deixarem de ser iguais.
+  // Depois 8, que é "todos os dias", muda a abertura de todos eles.
+  const { db } = conversa(["oi", "6", "6", "2", "17:00", "8", "1", "10:00"]);
 
-  for (const dia of [2, 3, 4, 5, 6]) {
+  for (const dia of [1, 2, 3, 4, 5, 6]) {
     assert.equal(db.settings.hours[dia]?.[0]?.start, 10 * 60, `dia ${dia} não mudou`);
   }
   // O fechamento de cada um continua o dele: o sábado fecha 17:00 e a sexta 20:00.
   assert.equal(db.settings.hours[6]?.at(-1)?.end, 17 * 60);
   assert.equal(db.settings.hours[5]?.at(-1)?.end, 20 * 60);
-  // E a segunda, que é fechada, continua fechada.
-  assert.deepEqual(db.settings.hours[1], []);
+  // E o domingo, que é fechado, continua fechado.
+  assert.deepEqual(db.settings.hours[0], []);
 });
 
 test("o almoço de todos os dias de uma vez, e tirar de todos", () => {
-  const { db } = conversa(["oi", "6", "8", "3", "12:30", "13:30"]);
+  const almoco = ["oi", "6", "8", "3", "12:30", "13:30"];
+  const { db } = conversa(almoco);
   assert.deepEqual(db.settings.hours[TERCA], [
-    { start: 9 * 60, end: 12 * 60 + 30 },
-    { start: 13 * 60 + 30, end: 19 * 60 },
+    { start: 8 * 60, end: 12 * 60 + 30 },
+    { start: 13 * 60 + 30, end: 20 * 60 },
   ]);
   // O sábado não tinha almoço e passou a ter, porque foi o que se pediu.
   assert.equal(db.settings.hours[6]?.length, 2);
 
-  const sem = conversa(["oi", "6", "8", "3", "0"]).db;
-  assert.deepEqual(sem.settings.hours[TERCA], [{ start: 9 * 60, end: 19 * 60 }]);
+  const sem = conversa([...almoco, "8", "3", "0"]).db;
+  assert.deepEqual(sem.settings.hours[TERCA], [{ start: 8 * 60, end: 20 * 60 }]);
 });
 
 test("um horário que não fecha em algum dia derruba a mudança inteira", () => {
-  // 18:00 é depois do fechamento do sábado (17:00): salvar em cinco dias e
-  // pular o sexto em silêncio seria pior do que recusar.
-  const { dito, db } = conversa(["oi", "6", "8", "1", "18:00"]);
+  // Com o sábado fechando 17:00, abrir todos às 18:00 não fecha nele: salvar
+  // em cinco dias e pular o sexto em silêncio seria pior do que recusar.
+  const { dito, db } = conversa(["oi", "6", "6", "2", "17:00", "8", "1", "18:00"]);
   assert.match(dito, /Esse horário não fecha/);
-  assert.equal(db.settings.hours[TERCA]?.[0]?.start, 9 * 60, "nada foi salvo");
+  assert.equal(db.settings.hours[TERCA]?.[0]?.start, 8 * 60, "nada foi salvo");
 });
 
 test("deixar todos iguais pergunta o dia inteiro e repete nos que abrem", () => {
@@ -239,11 +244,10 @@ test("deixar todos iguais pergunta o dia inteiro e repete nos que abrem", () => 
     { start: 9 * 60, end: 12 * 60 },
     { start: 13 * 60, end: 19 * 60 },
   ];
-  for (const dia of [2, 3, 4, 5, 6]) {
+  for (const dia of [1, 2, 3, 4, 5, 6]) {
     assert.deepEqual(db.settings.hours[dia], esperado, `dia ${dia}`);
   }
-  // Segunda e domingo estavam fechados e continuam fechados.
-  assert.deepEqual(db.settings.hours[1], []);
+  // O domingo estava fechado e continua fechado.
   assert.deepEqual(db.settings.hours[0], []);
 });
 
@@ -256,19 +260,13 @@ test("iguais sem almoço é um intervalo só, em todos", () => {
 test("nada é escrito antes da última resposta", () => {
   // Duas respostas dadas, a terceira não: a semana continua como estava.
   const { db } = conversa(["oi", "6", "8", "4", "10:00", "18:00"]);
-  assert.deepEqual(db.settings.hours[TERCA], [
-    { start: 9 * 60, end: 12 * 60 },
-    { start: 14 * 60, end: 19 * 60 },
-  ]);
+  assert.deepEqual(db.settings.hours[TERCA], [{ start: 8 * 60, end: 20 * 60 }]);
 });
 
 test("um almoço que não cabe no dia é recusado, e não vira dia sem almoço", () => {
   const { dito, db } = conversa(["oi", "6", "8", "4", "09:00", "18:00", "19:00", "20:00"]);
   assert.match(dito, /Esse horário não fecha/);
-  assert.deepEqual(db.settings.hours[TERCA], [
-    { start: 9 * 60, end: 12 * 60 },
-    { start: 14 * 60, end: 19 * 60 },
-  ]);
+  assert.deepEqual(db.settings.hours[TERCA], [{ start: 8 * 60, end: 20 * 60 }]);
 });
 
 test("depois de igualar, um dia ainda se muda sozinho", () => {

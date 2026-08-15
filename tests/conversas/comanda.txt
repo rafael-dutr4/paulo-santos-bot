@@ -1,7 +1,7 @@
 # Fechar a comanda de um atendimento que já passou: saiu um pezinho a mais, o
-# cliente levou um refrigerante e o corte saiu por 40 em vez de 45.
+# cliente levou um refrigerante e o corte saiu por 35 em vez de 40.
 # now: 2026-08-11 10:00
-# phone: 5511999990000
+# phone: 5577999999999
 # agenda: 2026-08-11 09:00 corte 5511922222222 Zé
 # agenda: 2026-08-11 14:00 barba 5511933333333 Marcos
 
@@ -38,7 +38,7 @@
 > 1
 < pedir_valor
 
-> 40
+> 35
 < comanda
 
 > 4
@@ -56,4 +56,4 @@
 = 2026-08-11 09:00 corte
 = 2026-08-11 14:00 barba
 
-$ 2026-08-11 09:00 pix 6600
+$ 2026-08-11 09:00 pix 5600

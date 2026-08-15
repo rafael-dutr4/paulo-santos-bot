@@ -1,7 +1,8 @@
-# O barbeiro mexe nos dias: encurta a terça, tira o almoço do sábado, abre a
-# segunda que estava fechada e marca um dia que não vai abrir.
+# O barbeiro mexe nos dias: encurta a terça, dá e tira o almoço dela, dá um
+# almoço ao sábado, abre o domingo que estava fechado e marca um dia que não
+# vai abrir.
 # now: 2026-08-11 10:00
-# phone: 5511999990000
+# phone: 5577999999999
 
 > oi
 < saudacao_barbeiro
@@ -36,8 +37,22 @@
 > voltar
 < dias_horarios
 
-# Tirar o almoço da terça é a opção zero: não é uma hora, então não disputa
-# com as horas.
+# A terça abre direto, então primeiro ela ganha um almoço.
+> 2
+< editar_dia_aberto
+
+> 3
+< mudar_almoco
+
+> 12:00
+< almoco_ate
+
+> 13:00
+< salvo
+< dias_horarios
+
+# E tirar o almoço é a opção zero: não é uma hora, então não disputa com as
+# horas.
 > 2
 < editar_dia_aberto
 
@@ -48,7 +63,7 @@
 < salvo
 < dias_horarios
 
-# O sábado (6) é direto, sem almoço. Dar um almoço a ele é uma hora e outra.
+# O sábado (6) também é direto. Dar um almoço a ele é uma hora e outra.
 > 6
 < editar_dia_aberto
 
@@ -62,8 +77,9 @@
 < salvo
 < dias_horarios
 
-# A segunda (1) está fechada: abrir copia o expediente de um dia que já abre.
-> 1
+# O domingo (7, porque a semana começa na segunda) está fechado: abrir copia o
+# expediente de um dia que já abre.
+> 7
 < editar_dia_fechado
 
 > 1

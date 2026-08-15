@@ -50,4 +50,4 @@
 < agendado
 < menu
 
-= 2026-08-11 14:30 corte
+= 2026-08-10 14:30 corte

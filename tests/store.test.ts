@@ -49,9 +49,9 @@ test("fechar duas vezes o mesmo horário substitui, não dobra o caixa", () => {
 });
 
 test("salvar um serviço cria pelo id, e o segundo salvar atualiza no lugar", () => {
-  const novo = { id: "sobrancelha", name: "Sobrancelha", minutes: 30, price: 1500 };
+  const novo = { id: "relaxamento", name: "Relaxamento", minutes: 30, price: 1500 };
   const db = write(emptyDb(), [{ kind: "service", service: novo }]);
-  assert.equal(db.settings.services.at(-1)?.id, "sobrancelha");
+  assert.equal(db.settings.services.at(-1)?.id, "relaxamento");
 
   const caro = write(db, [{ kind: "service", service: { ...novo, price: 2000 } }]);
   assert.equal(caro.settings.services.length, db.settings.services.length, "não duplicou");
