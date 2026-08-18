@@ -14,7 +14,7 @@
 
 import type { MessageKey } from "../bot/message.ts";
 import type { Interval } from "../shop/shop.ts";
-import { SHOP } from "../shop/shop.ts";
+import { SHOP, byCategory } from "../shop/shop.ts";
 import { hhmm, isDay, parts, weekday } from "../shop/time.ts";
 import type { Day, Minutes, Weekday } from "../shop/time.ts";
 
@@ -148,6 +148,29 @@ function tabelaDeHorarios(): string {
   return linhas.join("\n");
 }
 
+/**
+ * O menu do cliente, escrito uma vez e usado em dois lugares.
+ *
+ * Quem chega recebe a saudação e o menu na mesma mensagem, duas mensagens
+ * seguidas, uma delas com duas linhas, é o bot falando sozinho enquanto a
+ * pessoa espera. `saudacao` é o menu com outra abertura, e não um segundo
+ * menu: mudar uma opção aqui muda os dois.
+ */
+function menuDoCliente(): string {
+  return [
+    "O que você quer fazer?",
+    "",
+    "1 - Agendar um horário",
+    "2 - Ver meus agendamentos",
+    "3 - Preços",
+    "4 - Horário de funcionamento",
+    "5 - Onde ficamos",
+    `6 - Falar com o ${SHOP.barber}`,
+    "",
+    "É só responder com o número.",
+  ].join("\n");
+}
+
 function lista(itens: string[]): string {
   if (itens.length <= 1) return itens.join("");
   return `${itens.slice(0, -1).join(", ")} e ${itens.at(-1)}`;
@@ -155,21 +178,14 @@ function lista(itens: string[]): string {
 
 export const PTBR: Record<MessageKey, Template> = {
   saudacao: () =>
-    `Opa! Aqui é o assistente do ${SHOP.name} 💈\nPosso te ajudar com agendamento e informações.`,
-
-  menu: () =>
     [
-      "O que você quer fazer?",
+      `Opa! Aqui é o assistente do ${SHOP.name} 💈`,
+      "Posso te ajudar com agendamento e informações.",
       "",
-      "1 - Agendar um horário",
-      "2 - Ver meus agendamentos",
-      "3 - Preços",
-      "4 - Horário de funcionamento",
-      "5 - Onde ficamos",
-      `6 - Falar com o ${SHOP.barber}`,
-      "",
-      "É só responder com o número.",
+      menuDoCliente(),
     ].join("\n"),
+
+  menu: () => menuDoCliente(),
 
   nao_entendi: () => "Não entendi 🤔 Responde com o número da opção, por favor.",
 
@@ -181,11 +197,21 @@ export const PTBR: Record<MessageKey, Template> = {
   humano: () =>
     `Beleza, vou chamar o ${SHOP.barber}. Ele responde aqui assim que puder 👍\nSe for urgente, liga em ${SHOP.phone}.`,
 
+  /**
+   * A tabela como ela está na parede: três faixas, cada uma com o seu título.
+   *
+   * Ela lê `SHOP` e não o catálogo do banco de propósito? Não, lê o banco em
+   * `catalogo`, que é do barbeiro. Aqui é a constante porque esta mensagem é a
+   * tabela impressa, e quem quiser o preço de hoje pergunta no agendamento.
+   */
   precos: () =>
     [
       "Nossa tabela:",
-      "",
-      ...SHOP.services.map((s) => `${s.name}: ${brl(s.price)} (${s.minutes} min)`),
+      ...byCategory(SHOP, SHOP.services).flatMap((grupo) => [
+        "",
+        `${grupo.category.emoji} ${grupo.category.name.toUpperCase()}`,
+        ...grupo.services.map((s) => `${s.name}: ${brl(s.price)} (${s.minutes} min)`),
+      ]),
       "",
       "Aceitamos dinheiro, pix e cartão.",
     ].join("\n"),
@@ -205,6 +231,10 @@ export const PTBR: Record<MessageKey, Template> = {
     ].join("\n"),
   item_marcado: (w) =>
     `· ${str(w, "servico")}, ${dia(str(w, "dia"))} às ${hora(num(w, "hora"))}`,
+
+  escolher_faixa: (w) => ["O que você quer marcar?", "", str(w, "itens")].join("\n"),
+  item_faixa: (w) =>
+    `${num(w, "n")} - ${str(w, "emoji")} ${str(w, "nome")} (${num(w, "quantos")})`,
 
   escolher_servico: (w) => ["Qual serviço você quer?", "", str(w, "itens")].join("\n"),
   item_servico: (w) =>
@@ -325,6 +355,7 @@ export const PTBR: Record<MessageKey, Template> = {
       "4 - Relatório",
       "5 - Serviços e produtos",
       "6 - Dias e horários",
+      "7 - Travar um horário",
     ].join("\n"),
 
   despedida_barbeiro: () => "Fechado. Bom trabalho 💈",
@@ -382,14 +413,14 @@ export const PTBR: Record<MessageKey, Template> = {
       `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
-  item_comanda: (w) => `· ${str(w, "nome")} — ${brl(num(w, "valor"))}`,
+  item_comanda: (w) => `· ${str(w, "nome")}: ${brl(num(w, "valor"))}`,
 
   servico_extra: (w) => ["O que mais foi feito?", "", str(w, "itens")].join("\n"),
   produto_extra: (w) => ["O que o cliente levou?", "", str(w, "itens")].join("\n"),
   item_produto: (w) => `${num(w, "n")} - ${str(w, "nome")} (${brl(num(w, "preco"))})`,
 
   escolher_item: (w) => ["Qual valor?", "", str(w, "itens")].join("\n"),
-  item_para_corrigir: (w) => `${num(w, "n")} - ${str(w, "nome")} — ${brl(num(w, "valor"))}`,
+  item_para_corrigir: (w) => `${num(w, "n")} - ${str(w, "nome")}: ${brl(num(w, "valor"))}`,
 
   pedir_valor: (w) =>
     [
@@ -411,7 +442,7 @@ export const PTBR: Record<MessageKey, Template> = {
 
   catalogo: (w) =>
     [
-      "✂️ Serviços",
+      "Serviços",
       str(w, "servicos"),
       "",
       "🧴 Produtos",
@@ -432,7 +463,8 @@ export const PTBR: Record<MessageKey, Template> = {
       "",
       "1 - Mudar o preço",
       "2 - Mudar o tempo",
-      "3 - Tirar da lista",
+      "3 - Mudar a faixa",
+      "4 - Tirar da lista",
       `${num(w, "voltar")} - Voltar`,
     ].join("\n"),
 
@@ -457,6 +489,10 @@ export const PTBR: Record<MessageKey, Template> = {
       "As comandas antigas não mudam: elas guardam o nome e o preço do dia.",
     ].join("\n"),
 
+  escolher_categoria: (w) =>
+    [`${str(w, "nome")}. Em qual faixa da tabela ele entra?`, "", str(w, "itens")].join("\n"),
+  item_categoria: (w) => `${num(w, "n")} - ${str(w, "emoji")} ${str(w, "nome")}`,
+
   novo_servico: () => "Qual o nome do serviço?\n\nOu voltar.",
   novo_produto: () => "Qual o nome do produto?\n\nOu voltar.",
   novo_preco: (w) => `Quanto custa ${str(w, "nome")}?`,
@@ -473,7 +509,7 @@ export const PTBR: Record<MessageKey, Template> = {
    * Uma linha da semana.
    *
    * O horário chega como `540-720 840-1140`, que é o dado, e vira "09:00 às
-   * 12:00 e 14:00 às 19:00" aqui — o motor não escreve hora nenhuma.
+   * 12:00 e 14:00 às 19:00" aqui, o motor não escreve hora nenhuma.
    */
   linha_dia_semana: (w) => {
     const nome = DIAS[Number(w["dia"])] ?? "";
@@ -509,8 +545,16 @@ export const PTBR: Record<MessageKey, Template> = {
 
   igual_fecha: (w) => `Abre ${hora(num(w, "abre"))}. E fecha que horas?\n\nOu voltar.`,
 
-  igual_almoco: () =>
-    ["O almoço começa que horas?", "", "0 - Sem pausa pra almoço", "", "Ou voltar."].join("\n"),
+  igual_almoco: (w) =>
+    [
+      `Abre ${hora(num(w, "abre"))}, fecha ${hora(num(w, "fecha"))}.`,
+      "",
+      "O almoço começa que horas?",
+      "",
+      "0 - Sem pausa pra almoço",
+      "",
+      "Ou voltar.",
+    ].join("\n"),
 
   editar_dia_aberto: (w) => {
     const almoco =
@@ -559,12 +603,12 @@ export const PTBR: Record<MessageKey, Template> = {
   /**
    * A opção zero.
    *
-   * Tirar o almoço não é uma hora, então não cabia na mesma frase da pergunta —
+   * Tirar o almoço não é uma hora, então não cabia na mesma frase da pergunta ,
    * e a frase que tentava explicar as duas coisas ("responde a hora, sem para
    * tirar o almoço") só confundia. Vira uma linha numerada, como todo o resto
    * do bot, e o zero é o número que sobra: nenhuma hora do dia é zero.
    *
-   * Num dia que já não tem almoço a linha não aparece — ela desfaria algo que
+   * Num dia que já não tem almoço a linha não aparece, ela desfaria algo que
    * não existe.
    */
   mudar_almoco: (w) =>
@@ -618,6 +662,74 @@ export const PTBR: Record<MessageKey, Template> = {
 
   confirmar_reabrir: (w) => `Abrir ${dia(str(w, "dia"))} de novo? (sim / não)`,
 
+  // Fechar um dia da semana é para sempre, e era a única mudança destrutiva
+  // sem um "tem certeza?". As outras três já perguntam.
+  confirmar_fechar_semana: (w) =>
+    [
+      `Fechar ${DIAS[Number(w["dia"])] ?? ""} para sempre?`,
+      "A barbearia deixa de abrir nesse dia da semana, toda semana.",
+      "",
+      "(sim / não)",
+    ].join("\n"),
+
+  // --- as horas travadas ---------------------------------------------------
+
+  /**
+   * A lista das horas travadas, e o convite para travar mais uma.
+   *
+   * Sem nenhuma travada a lista é só o convite, e o texto muda de frase: "não
+   * tem nada travado" diz mais do que um cabeçalho em cima de uma lista de uma
+   * linha só.
+   */
+  bloqueios: (w) =>
+    num(w, "quantos") === 0
+      ? ["🔒 Nada travado por enquanto.", "", str(w, "itens")].join("\n")
+      : [
+          "🔒 Horários travados:",
+          "",
+          str(w, "itens"),
+          "",
+          "Escolhe um para destravar.",
+        ].join("\n"),
+  item_bloqueio: (w) =>
+    `${num(w, "n")} - ${dia(str(w, "dia"))} · ${hora(num(w, "de"))} às ${hora(num(w, "ate"))}`,
+  item_bloquear: (w) => `${num(w, "n")} - Travar um horário`,
+
+  pedir_dia_bloqueio: () =>
+    ["Travar horário em que dia? (sexta, 21/08, amanhã)", "", "Ou voltar."].join("\n"),
+  pedir_inicio_bloqueio: (w) =>
+    [`${dia(str(w, "dia"))}. A partir de que horas?`, "", "Ex.: 15:00, três da tarde."].join("\n"),
+  pedir_fim_bloqueio: (w) => `Travado a partir das ${hora(num(w, "de"))}. Até que horas?`,
+
+  bloqueado: (w) =>
+    [
+      `Travado 👍 ${dia(str(w, "dia"))}, das ${hora(num(w, "de"))} às ${hora(num(w, "ate"))}.`,
+      "",
+      "O cliente não vê mais esse horário.",
+    ].join("\n"),
+
+  desbloqueado: (w) =>
+    `Destravado 👍 ${dia(str(w, "dia"))} das ${hora(num(w, "de"))} volta para a lista do cliente.`,
+
+  hora_invalida: () => "Esse horário não fecha 😕 O fim vem depois do começo.",
+
+  /**
+   * Travar por cima de quem já está marcado seria desmarcar sem avisar.
+   *
+   * É a mesma recusa de `dia_tem_gente`, num pedaço menor do dia: o bot mostra
+   * quem está lá e devolve a decisão. Falar com essas pessoas não é trabalho de
+   * bot.
+   */
+  hora_tem_gente: (w) =>
+    [
+      "Não dá: tem gente marcada nesse horário 😕",
+      "",
+      str(w, "itens"),
+      "",
+      "Cancela ou remarca com essas pessoas primeiro, aí você trava.",
+    ].join("\n"),
+
+
   menu_relatorio: (w) =>
     [
       "Relatório de quando?",
@@ -660,8 +772,8 @@ export const PTBR: Record<MessageKey, Template> = {
     ].join("\n");
   },
 
-  linha_item: (w) => `· ${str(w, "nome")} ${num(w, "quantidade")}× — ${brl(num(w, "total"))}`,
-  linha_pagamento: (w) => `· ${forma(str(w, "forma"))} — ${brl(num(w, "total"))}`,
+  linha_item: (w) => `· ${str(w, "nome")} ${num(w, "quantidade")}×: ${brl(num(w, "total"))}`,
+  linha_pagamento: (w) => `· ${forma(str(w, "forma"))}: ${brl(num(w, "total"))}`,
 
   relatorio_vazio: (w) =>
     `Nenhuma comanda fechada em ${periodoEscrito(str(w, "de"), str(w, "ate"))}.`,

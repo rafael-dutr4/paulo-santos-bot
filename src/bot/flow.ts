@@ -14,7 +14,7 @@
 import type { Agenda, Appointment, Effect } from "../shop/agenda.ts";
 import { appointmentId, byId, upcoming } from "../shop/agenda.ts";
 import type { Service, Shop } from "../shop/shop.ts";
-import { isBarber, serviceById } from "../shop/shop.ts";
+import { byCategory, isBarber, serviceById } from "../shop/shop.ts";
 import { byPeriod, daysWithSlots, freeSlots } from "../shop/slots.ts";
 import type { Choice, Ctx, Session, StateName } from "./session.ts";
 import { clearDraft } from "./session.ts";
@@ -79,7 +79,7 @@ function hasDays(session: Session, ctx: Ctx): boolean {
  * Para onde "voltar" pode levar. É a lista que o teste do grafo lê, e um teste
  * separado cobra que todo `back` da tabela esteja aqui dentro.
  */
-const BACK_TARGETS = ["menu", "escolher_servico", "escolher_dia"];
+const BACK_TARGETS = ["menu", "escolher_faixa", "escolher_servico", "escolher_dia"];
 
 function backFrom(session: Session): StateName {
   return FLOW.states[session.state]?.back ?? "menu";
@@ -90,7 +90,7 @@ function backFrom(session: Session): StateName {
  *
  * As listas dinâmicas ganham a última linha de `numbered()`, que sabe quantos
  * itens saíram. Um menu escrito à mão não tem quem conte por ele, então o
- * número é uma constante, usada nos dois lugares — no texto e na transição —
+ * número é uma constante, usada nos dois lugares, no texto e na transição ,
  * para não haver como um andar sem o outro.
  */
 const VOLTAR_O_QUE_FAZER = 3;
@@ -104,15 +104,15 @@ const menu: State = {
   on: [
     {
       // Quem já tem horário marcado é avisado antes de marcar outro. Marcar
-      // dois é permitido — o cliente que corta o cabelo e leva o filho faz
-      // isso —, mas quem esqueceu que já tinha precisa ser lembrado, e não
+      // dois é permitido, o cliente que corta o cabelo e leva o filho faz
+      // isso , mas quem esqueceu que já tinha precisa ser lembrado, e não
       // descobrir na semana seguinte com dois horários no nome.
       match: option(1),
       go: (session, ctx) =>
         upcoming(ctx.agenda, session.phone, ctx.now).length > 0
           ? "ja_tem_horario"
-          : "escolher_servico",
-      exits: ["ja_tem_horario", "escolher_servico"],
+          : "escolher_faixa",
+      exits: ["ja_tem_horario", "escolher_faixa"],
     },
     {
       match: option(2),
@@ -129,10 +129,80 @@ const menu: State = {
   ],
 };
 
+/**
+ * A saudação é o menu com outra abertura, e não uma mensagem antes dele.
+ *
+ * Duas mensagens seguidas é o bot falando sozinho enquanto a pessoa espera, e
+ * a segunda é a única que pede resposta. Herdando o resto do `menu` por espalha,
+ * uma opção nova entra num lugar só, não há como as duas telas de entrada
+ * discordarem sobre o que o bot sabe fazer.
+ */
+const saudacao: State = {
+  ...menu,
+  // Repetir a pergunta não é chegar de novo: quem não foi entendido aqui lê o
+  // menu outra vez, e não "olá" outra vez. O contador de erros é o que separa
+  // a primeira entrada da repetição, e ele só é maior que zero na repetição.
+  enter: (session) => ({
+    session: clearDraft(session),
+    messages: [msg(session.misses > 0 ? "menu" : "saudacao")],
+  }),
+};
+
+/**
+ * A faixa antes do serviço, porque dezesseis linhas não são um menu.
+ *
+ * A tabela inteira numa mensagem só era uma parede: dezesseis linhas, mais do
+ * que as dez que uma lista do WhatsApp abre, então o passo mais usado do bot era
+ * justamente o único que não podia virar lista. Partida em faixas, cada tela
+ * cabe (três linhas aqui, no máximo oito depois) e as duas viram lista.
+ *
+ * O custo é uma resposta a mais para marcar, e ele é pago por quem procura: a
+ * faixa é a mesma da tabela da parede, então quem já viu o preço já sabe onde
+ * o serviço está.
+ */
+const escolherFaixa: State = {
+  enter: (session, ctx) => {
+    const faixas = byCategory(ctx.shop, ctx.shop.services);
+    const lista = numbered(
+      faixas.map((grupo, i) =>
+        msg("item_faixa", {
+          n: i + 1,
+          nome: grupo.category.name,
+          emoji: grupo.category.emoji,
+          quantos: grupo.services.length,
+        }),
+      ),
+      faixas.map((grupo): Choice => ({ kind: "categoria", id: grupo.category.id })),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("escolher_faixa", { itens: lista.itens })],
+    };
+  },
+  on: [
+    {
+      match: choice("categoria"),
+      act: (session, match) => ({
+        session:
+          match.choice?.kind === "categoria"
+            ? { ...session, draft: { ...session.draft, categoryId: match.choice.id } }
+            : session,
+      }),
+      go: "escolher_servico",
+    },
+  ],
+};
+
 const escolherServico: State = {
   enter: (session, ctx) => {
+    const faixa = session.draft.categoryId;
+    const servicos = ctx.shop.services.filter((service) => service.category === faixa);
+    // Uma faixa que ficou sem serviço nenhum (o barbeiro tirou o último) não
+    // tem pergunta a fazer: manda de volta para a lista de faixas.
+    if (servicos.length === 0) return { session, messages: [], go: "escolher_faixa" };
+
     const lista = numbered(
-      ctx.shop.services.map((service, i) =>
+      servicos.map((service, i) =>
         msg("item_servico", {
           n: i + 1,
           nome: service.name,
@@ -140,13 +210,15 @@ const escolherServico: State = {
           preco: service.price,
         }),
       ),
-      ctx.shop.services.map((service) => ({ kind: "service", id: service.id }) as const),
+      servicos.map((service): Choice => ({ kind: "service", id: service.id })),
     );
     return {
       session: { ...session, choices: lista.choices },
       messages: [msg("escolher_servico", { itens: lista.itens })],
     };
   },
+  exits: ["escolher_faixa"],
+  back: "escolher_faixa",
   on: [
     {
       match: choice("service"),
@@ -370,13 +442,13 @@ function confirmationOf(key: "agendado" | "remarcado"): Enter {
  *
  * Ele não impede nada: quem quer mesmo dois horários diz sim e segue pelo mesmo
  * caminho de sempre. Quem esqueceu diz não e cai na lista dos seus horários, de
- * onde dá para cancelar ou remarcar — que é o que ele queria fazer desde o
+ * onde dá para cancelar ou remarcar, que é o que ele queria fazer desde o
  * começo, sem saber o nome disso.
  */
 const jaTemHorario: State = {
   enter: (session, ctx) => {
     const mine = upcoming(ctx.agenda, session.phone, ctx.now);
-    if (mine.length === 0) return { session, messages: [], go: "escolher_servico" };
+    if (mine.length === 0) return { session, messages: [], go: "escolher_faixa" };
     return {
       session,
       messages: [
@@ -392,9 +464,9 @@ const jaTemHorario: State = {
       ],
     };
   },
-  exits: ["escolher_servico"],
+  exits: ["escolher_faixa"],
   on: [
-    { match: yes, go: "escolher_servico" },
+    { match: yes, go: "escolher_faixa" },
     { match: no, go: "meus_agendamentos" },
   ],
 };
@@ -523,7 +595,7 @@ export const FLOW: Flow = {
   states: {
     // The bot never speaks first: on WhatsApp the client opens the conversation.
     inicio: { enter: silent, on: [{ match: anything, go: "saudacao" }] },
-    saudacao: { enter: says(msg("saudacao")), goto: "menu" },
+    saudacao,
     menu,
 
     precos: { enter: says(msg("precos")), goto: "menu" },
@@ -533,6 +605,7 @@ export const FLOW: Flow = {
     despedida: { enter: says(msg("despedida")), goto: "inicio" },
 
     ja_tem_horario: jaTemHorario,
+    escolher_faixa: escolherFaixa,
     escolher_servico: escolherServico,
     escolher_dia: escolherDia,
     escolher_hora: escolherHora,

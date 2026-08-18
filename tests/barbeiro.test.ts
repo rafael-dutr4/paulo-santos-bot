@@ -52,24 +52,26 @@ test("o preço novo aparece na lista do mesmo turno em que foi salvo", () => {
 });
 
 test("o produto novo aparece na lista do mesmo turno em que foi criado", () => {
-  const { dito, db } = conversa(["oi", "5", "23", "Água de coco", "8,50"]);
+  const { dito, db } = conversa(["oi", "5", "24", "Água de coco", "8,50"]);
   assert.match(dito, /Água de coco · R\$ 8,50/, "a lista não trouxe o que acabou de nascer");
   assert.ok(db.settings.products.some((p) => p.id === "agua_de_coco"));
 });
 
 test("o serviço novo nasce com nome, preço e tempo, e o cliente passa a vê-lo", () => {
-  const { db } = conversa(["oi", "5", "22", "Relaxamento", "60", "meia hora"]);
+  // Nome, preço, tempo e a faixa da tabela: 1 é a barbearia.
+  const { db } = conversa(["oi", "5", "23", "Relaxamento", "60", "meia hora", "1"]);
   assert.deepEqual(db.settings.services.at(-1), {
     id: "relaxamento",
     name: "Relaxamento",
     minutes: 30,
     price: 6000,
+    category: "barbearia",
   });
 });
 
 test("tirar da lista tira, e a lista do mesmo turno já não mostra", () => {
-  // 21 é a bala, a última da prateleira inicial.
-  const { dito, db } = conversa(["oi", "5", "21", "2", "sim"]);
+  // 22 é a bala, a última da prateleira inicial.
+  const { dito, db } = conversa(["oi", "5", "22", "2", "sim"]);
   assert.ok(!db.settings.products.some((p) => p.id === "bala"));
   assert.doesNotMatch(dito, /Bala/);
 });
@@ -79,23 +81,25 @@ test("o produto não tem tempo, e o menu dele é um item mais curto", () => {
   // "tirar" sobe para 2 e o voltar para 3.
   const { dito: servico } = conversa(["oi", "5", "1"]);
   assert.match(servico, /2 - Mudar o tempo/);
-  assert.match(servico, /4 - Voltar/);
+  assert.match(servico, /3 - Mudar a faixa/);
+  assert.match(servico, /5 - Voltar/);
 
-  const { dito: produto } = conversa(["oi", "5", "21"]);
+  // 16 serviços, então o 22 é a bala: o sexto dos sete produtos.
+  const { dito: produto } = conversa(["oi", "5", "22"]);
   assert.doesNotMatch(produto, /Mudar o tempo/);
   assert.match(produto, /3 - Voltar/);
 });
 
 test("toda lista termina em voltar, e ele é um passo atrás", () => {
-  // O catálogo tem 15 serviços, 6 produtos e as duas linhas de "novo": o 24 é a
+  // O catálogo tem 16 serviços, 6 produtos e as duas linhas de "novo": o 25 é a
   // saída. Atrás do catálogo está o menu.
-  const { dito: doSettingso } = conversa(["oi", "5", "24"]);
+  const { dito: doSettingso } = conversa(["oi", "5", "25"]);
   assert.match(doSettingso, /1 - Agenda de hoje/);
 
   // E atrás de um item do catálogo está o catálogo, não o menu: um passo, como
   // a palavra "voltar" sempre fez.
-  const { dito: doItem } = conversa(["oi", "5", "1", "4"]);
-  assert.match(doItem, /✂️ Serviços/);
+  const { dito: doItem } = conversa(["oi", "5", "1", "5"]);
+  assert.match(doItem, /Serviços/);
 });
 
 // --- os dias e o expediente ------------------------------------------------

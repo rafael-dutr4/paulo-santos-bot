@@ -22,7 +22,7 @@
 > 1
 < servico_extra
 
-> 4
+> 5
 < comanda
 
 # E um refrigerante da geladeira, que não é serviço nenhum.
@@ -44,8 +44,12 @@
 > 4
 < escolher_pagamento
 
+# Fechar devolve para a fila, e não para o menu: o barbeiro fecha o dia em
+# sequência. Como esta era a única em aberto, a fila vazia cai sozinha em
+# "nada a fechar" e daí no menu.
 > 2
 < comanda_fechada
+< nada_a_fechar
 < menu_barbeiro
 
 # Fechada uma vez, ela sai da lista.

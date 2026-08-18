@@ -7,7 +7,7 @@
  *
  * A ordem é a distância até hoje, do mais perto para o mais longe. `28/12` no
  * dia 5 de janeiro quase certamente é o dezembro que passou, e `10/08` no dia
- * 11 de agosto é ontem — a mesma regra acerta os dois, e nenhuma delas precisa
+ * 11 de agosto é ontem, a mesma regra acerta os dois, e nenhuma delas precisa
  * saber se a pergunta olhava para trás ou para a frente.
  */
 
@@ -46,7 +46,7 @@ const ENFEITE = /\b(?:de|da|na|no|a|o|dia|feira|essa|esta|proxim[ao]|que|vem)\b/
  *
  * "Quinta" é a quinta que vem, porque quem fala assim está combinando alguma
  * coisa; "quinta passada" é a que ficou para trás. Quando hoje já é quinta, a
- * leitura de frente é hoje mesmo — o dia mais próximo que atende o nome.
+ * leitura de frente é hoje mesmo, o dia mais próximo que atende o nome.
  *
  * As duas leituras são devolvidas sempre, na ordem que a frase pede. É a mesma
  * regra do resto do módulo: quem escolhe é o fluxo.

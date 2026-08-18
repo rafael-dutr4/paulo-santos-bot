@@ -27,7 +27,8 @@ import type { Comanda } from "../shop/comanda.ts";
 import { comandaById, itemFor, itemForProduct, itemsFor, pending, totalOf } from "../shop/comanda.ts";
 import type { Range } from "../shop/report.ts";
 import { dayRange, monthRange, report, weekRange } from "../shop/report.ts";
-import type { Expediente, Interval } from "../shop/shop.ts";
+import type { CategoryId, Expediente, Interval } from "../shop/shop.ts";
+import { overlaps, upcomingBlocks } from "../shop/slots.ts";
 import {
   expedienteOf,
   idFrom,
@@ -61,7 +62,14 @@ import type { CatalogDraft, Choice, ComandaDraft, Ctx, Session, StateName } from
 import { clearDraft } from "./session.ts";
 
 /** Para onde "voltar" leva do lado do barbeiro. */
-const BACK_TARGETS = ["menu_barbeiro", "comanda", "catalogo", "dias_horarios"];
+const BACK_TARGETS = [
+  "menu_barbeiro",
+  "comanda",
+  "catalogo",
+  "dias_horarios",
+  "editar_dia_semana",
+  "bloqueios",
+];
 
 function backFrom(session: Session): StateName {
   return BARBEIRO.states[session.state]?.back ?? "menu_barbeiro";
@@ -72,10 +80,10 @@ function backFrom(session: Session): StateName {
  *
  * As listas dinâmicas ganham a última linha de `numbered()`, que sabe quantos
  * itens saíram. Um menu escrito à mão não tem quem conte por ele, então o
- * número é uma constante usada nos dois lugares — no texto e na transição.
+ * número é uma constante usada nos dois lugares, no texto e na transição.
  */
 const VOLTAR_COMANDA = 5;
-const VOLTAR_SERVICO = 4;
+const VOLTAR_SERVICO = 5;
 const VOLTAR_PRODUTO = 3;
 const VOLTAR_RELATORIO = 5;
 const VOLTAR_DIA_ABERTO = 5;
@@ -113,7 +121,7 @@ function serviceName(ctx: Ctx, id: string): string {
  * O dia do barbeiro, um horário por linha.
  *
  * Cada linha diz em que pé está: fechada, faltou, ou ainda por fechar. O
- * estado não é guardado em lugar nenhum — ele é a resposta de olhar se existe
+ * estado não é guardado em lugar nenhum, ele é a resposta de olhar se existe
  * uma comanda com aquele id, que é a mesma subtração que monta a lista de
  * pendências.
  */
@@ -500,7 +508,7 @@ const comandaFechada: State = {
   enter: (session, ctx) => {
     const draft = comandaDraft(session);
     const appointment = target(session, ctx);
-    if (!draft || !appointment) return { session, messages: [], go: "menu_barbeiro" };
+    if (!draft || !appointment) return { session, messages: [], go: "comandas" };
     return {
       session,
       messages: [
@@ -512,7 +520,11 @@ const comandaFechada: State = {
       ],
     };
   },
-  goto: "menu_barbeiro",
+  // Fechar uma comanda devolve para a fila, e não para o menu: o barbeiro fecha
+  // o dia em sequência, e duas mensagens de navegação entre uma comanda e a
+  // seguinte são metade do custo da tarefa. Se a fila esvaziou, `comandas` já
+  // cai em `nada_a_fechar` sozinho.
+  goto: "comandas",
 };
 
 const comandaFaltou: State = {
@@ -523,7 +535,11 @@ const comandaFaltou: State = {
       messages: [msg("comanda_faltou", { nome: appointment?.clientName ?? "" })],
     };
   },
-  goto: "menu_barbeiro",
+  // Fechar uma comanda devolve para a fila, e não para o menu: o barbeiro
+  // fecha o dia em sequência, e duas mensagens de navegação entre uma e a
+  // seguinte são metade do custo da tarefa. Se a fila esvaziou, `comandas` já
+  // cai em `nada_a_fechar` sozinho.
+  goto: "comandas",
 };
 
 // --- o catálogo -----------------------------------------------------------
@@ -607,16 +623,37 @@ function catalogDraft(session: Session): CatalogDraft | null {
   return session.draft.catalogo ?? null;
 }
 
+/**
+ * Marca quem fez a pergunta, para o erro voltar nela e não no topo do ramo.
+ *
+ * O nome do estado é escrito aqui à mão porque um estado é um valor e não sabe
+ * como se chama. `tests/flow.test.ts` confere que todo nome citado existe, e o
+ * `exits` de `horario_invalido` lista todos eles.
+ */
+function perguntou(session: Session, state: StateName): Session {
+  return { ...session, draft: { ...session.draft, pergunta: state } };
+}
+
 const isServico = (session: Session): boolean => catalogDraft(session)?.what === "servico";
 const isProduto = (session: Session): boolean => catalogDraft(session)?.what === "produto";
 
 /** O item que está sendo editado, do jeito que ele está agora no catálogo. */
-function editando(session: Session, ctx: Ctx): { name: string; price: number; minutes?: Minutes } | null {
+function editando(
+  session: Session,
+  ctx: Ctx,
+): { name: string; price: number; minutes?: Minutes; category?: CategoryId } | null {
   const draft = catalogDraft(session);
   if (!draft?.id) return null;
   if (draft.what === "servico") {
     const service = serviceById(ctx.shop, draft.id);
-    return service ? { name: service.name, price: service.price, minutes: service.minutes } : null;
+    return service
+      ? {
+          name: service.name,
+          price: service.price,
+          minutes: service.minutes,
+          category: service.category,
+        }
+      : null;
   }
   const product = productById(ctx.shop, draft.id);
   return product ? { name: product.name, price: product.price } : null;
@@ -633,6 +670,7 @@ const editarItem: State = {
           nome: item.name,
           preco: item.price,
           minutos: item.minutes ?? 0,
+          faixa: nomeDaFaixa(ctx, item.category),
           voltar: isServico(session) ? VOLTAR_SERVICO : VOLTAR_PRODUTO,
         }),
       ],
@@ -643,7 +681,8 @@ const editarItem: State = {
   on: [
     { match: option(1), go: "mudar_preco" },
     { match: when(isServico, option(2)), go: "mudar_tempo" },
-    { match: when(isServico, option(3)), go: "confirmar_tirar" },
+    { match: when(isServico, option(3)), go: "escolher_categoria" },
+    { match: when(isServico, option(4)), go: "confirmar_tirar" },
     { match: when(isProduto, option(2)), go: "confirmar_tirar" },
     { match: when(isServico, option(VOLTAR_SERVICO)), go: backFrom, exits: BACK_TARGETS },
     { match: when(isProduto, option(VOLTAR_PRODUTO)), go: backFrom, exits: BACK_TARGETS },
@@ -671,8 +710,11 @@ function salvar(session: Session, ctx: Ctx, mudanca: Partial<CatalogDraft>): Eff
 
   const minutes = mudanca.minutes ?? draft.minutes ?? atual?.minutes ?? 0;
   if (minutes <= 0) return [];
+  // Um serviço sem faixa não existe: a tabela tem três, e quem cria escolhe uma.
+  // O padrão só cobre o serviço antigo de um banco gravado antes das faixas.
+  const category = mudanca.category ?? draft.category ?? atual?.category ?? "barbearia";
   const id = draft.id ?? idFrom(name, ctx.shop.services.map((s) => s.id));
-  return [{ kind: "service", service: { id, name, minutes, price } }];
+  return [{ kind: "service", service: { id, name, minutes, price, category } }];
 }
 
 const mudarPreco: State = {
@@ -806,10 +848,62 @@ const novoTempo: State = {
   back: "catalogo",
   on: [
     {
+      // O tempo fica no rascunho: só depois da faixa é que o serviço é gravado,
+      // pela mesma razão que a comanda espera a forma de pagamento.
       match: duration,
+      act: (session, match) => {
+        const draft = catalogDraft(session);
+        if (!draft) return { session };
+        return {
+          session: { ...session, draft: { catalogo: { ...draft, minutes: match.number ?? 0 } } },
+        };
+      },
+      go: "escolher_categoria",
+    },
+  ],
+};
+
+/** O nome da faixa, para as mensagens que a mostram. */
+function nomeDaFaixa(ctx: Ctx, id: CategoryId | undefined): string {
+  return ctx.shop.categories.find((c) => c.id === id)?.name ?? "";
+}
+
+/**
+ * A faixa da tabela, no caminho de criar e no de corrigir.
+ *
+ * Um estado só para os dois porque a pergunta é a mesma e o que ela faz é o
+ * mesmo, salvar. Quem chega de `novo_tempo` está criando e quem chega de
+ * `editar_item` está corrigindo, e `salvar()` já resolve isso pelo id do
+ * rascunho, como no preço e no tempo.
+ */
+const escolherCategoria: State = {
+  enter: (session, ctx) => {
+    const lista = numbered(
+      ctx.shop.categories.map((category, i) =>
+        msg("item_categoria", { n: i + 1, nome: category.name, emoji: category.emoji }),
+      ),
+      ctx.shop.categories.map((category): Choice => ({ kind: "categoria", id: category.id })),
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [
+        msg("escolher_categoria", {
+          nome: catalogDraft(session)?.name ?? editando(session, ctx)?.name ?? "",
+          itens: lista.itens,
+        }),
+      ],
+    };
+  },
+  back: "catalogo",
+  on: [
+    {
+      match: choice("categoria"),
       act: (session, match, ctx) => ({
         session,
-        effects: salvar(session, ctx, { minutes: match.number ?? 0 }),
+        effects:
+          match.choice?.kind === "categoria"
+            ? salvar(session, ctx, { category: match.choice.id })
+            : [],
       }),
       go: "salvo",
     },
@@ -879,6 +973,32 @@ const diasHorarios: State = {
  * Dia fechado continua fechado. Abrir a semana toda por engano seria o tipo de
  * estrago que o bot não pode fazer com uma tecla.
  */
+/**
+ * Fechar um dia da semana pede confirmação, como as outras três destrutivas.
+ *
+ * Tirar um serviço confirma, reabrir uma data confirma, cancelar um horário
+ * confirma. Esta era a única que não: quatro respostas seguidas e a segunda
+ * deixava de existir para sempre.
+ */
+const confirmarFecharSemana: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("confirmar_fechar_semana", { dia: weekdayOf(session) ?? 0 })],
+  }),
+  back: "editar_dia_semana",
+  on: [
+    {
+      match: yes,
+      act: (session) => ({
+        session,
+        effects: [{ kind: "hours", weekday: weekdayOf(session)!, intervals: [] }],
+      }),
+      go: "salvo",
+    },
+    { match: no, go: "editar_dia_semana" },
+  ],
+};
+
 const editarTodos: State = {
   enter: says(msg("editar_todos", { voltar: VOLTAR_TODOS })),
   back: "dias_horarios",
@@ -965,13 +1085,12 @@ const editarDiaSemana: State = {
     { match: when(diaAberto, option(2)), go: "mudar_fechamento" },
     { match: when(diaAberto, option(3)), go: "mudar_almoco" },
     {
+      // Um dia com gente marcada nem chega a perguntar: falar com essas pessoas
+      // não é trabalho de bot, e essa recusa vem antes da confirmação.
       match: when(diaAberto, option(4)),
-      act: (session, _match, ctx) =>
-        marcadosNoWeekday(session, ctx).length > 0
-          ? { session }
-          : { session, effects: [{ kind: "hours", weekday: weekdayOf(session)!, intervals: [] }] },
-      go: (session, ctx) => (marcadosNoWeekday(session, ctx).length > 0 ? "dia_tem_gente" : "salvo"),
-      exits: ["dia_tem_gente", "salvo"],
+      go: (session, ctx) =>
+        marcadosNoWeekday(session, ctx).length > 0 ? "dia_tem_gente" : "confirmar_fechar_semana",
+      exits: ["dia_tem_gente", "confirmar_fechar_semana"],
     },
     {
       // Abrir um dia fechado copia o expediente de um dia que já está aberto:
@@ -1042,7 +1161,7 @@ const mudarAbertura: State = {
     {
       match: anyHour,
       act: (session, match, ctx) => ({
-        session: lembrar(session, match.number),
+        session: perguntou(lembrar(session, match.number), "mudar_abertura"),
         effects: salvarExpediente(session, ctx, { abre: match.number ?? 0 }),
       }),
       // Abrir depois de fechar não é um horário, é um engano.
@@ -1067,7 +1186,7 @@ const mudarFechamento: State = {
     {
       match: anyHour,
       act: (session, match, ctx) => ({
-        session: lembrar(session, match.number),
+        session: perguntou(lembrar(session, match.number), "mudar_fechamento"),
         effects: salvarExpediente(session, ctx, { fecha: match.number ?? 0 }),
       }),
       go: (session, ctx) => (valido(session, ctx, { fecha: session.draft.hora ?? 0 }) ? "salvo" : "horario_invalido"),
@@ -1138,7 +1257,7 @@ const almocoAte: State = {
         const ate = match.number;
         if (de === undefined || ate === undefined) return { session };
         return {
-          session: lembrar(session, ate),
+          session: perguntou(lembrar(session, ate), "almoco_ate"),
           effects: salvarExpediente(session, ctx, { almoco: { start: de, end: ate } }),
         };
       },
@@ -1189,13 +1308,16 @@ const igualFecha: State = {
     {
       match: anyHour,
       act: (session, match) => ({
-        session: {
-          ...session,
-          draft: {
-            ...session.draft,
-            padrao: { ...session.draft.padrao, fecha: match.number ?? 0 },
+        session: perguntou(
+          {
+            ...session,
+            draft: {
+              ...session.draft,
+              padrao: { ...session.draft.padrao, fecha: match.number ?? 0 },
+            },
           },
-        },
+          "igual_fecha",
+        ),
       }),
       go: (session) => (abreAntesDeFechar(session.draft.padrao) ? "igual_almoco" : "horario_invalido"),
       exits: ["igual_almoco", "horario_invalido"],
@@ -1204,7 +1326,18 @@ const igualFecha: State = {
 };
 
 const igualAlmoco: State = {
-  enter: says(msg("igual_almoco")),
+  // A pergunta repete o que já foi respondido: a corrente tem quatro perguntas
+  // e nada é gravado antes da última, então quem erra no fim não pode ser
+  // pego de surpresa pelo que respondeu no começo.
+  enter: (session) => ({
+    session,
+    messages: [
+      msg("igual_almoco", {
+        abre: session.draft.padrao?.abre ?? 0,
+        fecha: session.draft.padrao?.fecha ?? 0,
+      }),
+    ],
+  }),
   back: "dias_horarios",
   on: [
     {
@@ -1243,13 +1376,16 @@ const igualAlmocoAte: State = {
       act: (session, match, ctx) => {
         const almoco = session.draft.padrao?.almoco;
         if (!almoco) return { session };
-        const completo: Session = {
-          ...session,
-          draft: {
-            ...session.draft,
-            padrao: { ...session.draft.padrao, almoco: { ...almoco, end: match.number ?? 0 } },
+        const completo: Session = perguntou(
+          {
+            ...session,
+            draft: {
+              ...session.draft,
+              padrao: { ...session.draft.padrao, almoco: { ...almoco, end: match.number ?? 0 } },
+            },
           },
-        };
+          "igual_almoco_ate",
+        );
         return { session: completo, effects: padraoEmTodos(completo, ctx) };
       },
       go: (session, ctx) => (padraoEmTodos(session, ctx).length > 0 ? "salvo" : "horario_invalido"),
@@ -1389,6 +1525,206 @@ const confirmarReabrir: State = {
   ],
 };
 
+// --- as horas travadas -----------------------------------------------------
+
+/**
+ * Travar um pedaço de um dia.
+ *
+ * É o irmão pequeno do dia fechado: `holidays` tira um dia inteiro da conta de
+ * horas livres, e um bloqueio tira um intervalo de um dia que abre. O barbeiro
+ * tem médico às três da sexta, e nada mais precisa acontecer, nem cancelar
+ * horário, nem mexer no expediente da semana.
+ *
+ * A conta do outro lado não mudou: `freeSlots` já subtraía intervalos ocupados,
+ * e um bloqueio entrou nessa lista junto com os agendamentos. Por isso não
+ * existe nada aqui sobre o menu do cliente.
+ */
+const bloqueios: State = {
+  enter: (session, ctx) => {
+    const travados = upcomingBlocks(ctx.shop, ctx.now);
+    const lista = numbered(
+      [
+        ...travados.map((block, i) =>
+          msg("item_bloqueio", { n: i + 1, dia: block.day, de: block.start, ate: block.end }),
+        ),
+        msg("item_bloquear", { n: travados.length + 1 }),
+      ],
+      [
+        ...travados.map(
+          (block) => ({ kind: "bloqueio", day: block.day, start: block.start }) as const,
+        ),
+        { kind: "novo", what: "produto" },
+      ],
+    );
+    return {
+      session: { ...session, choices: lista.choices },
+      messages: [msg("bloqueios", { itens: lista.itens, quantos: travados.length })],
+    };
+  },
+  on: [
+    {
+      // Escolher um travado destrava, como escolher uma data fechada reabre.
+      match: choice("bloqueio"),
+      act: (session, match) =>
+        match.choice?.kind === "bloqueio"
+          ? {
+              session: {
+                ...session,
+                draft: { bloqueio: { day: match.choice.day, start: match.choice.start } },
+              },
+              effects: [
+                { kind: "unblock" as const, day: match.choice.day, start: match.choice.start },
+              ],
+            }
+          : { session },
+      go: "desbloqueado",
+    },
+    { match: choice("novo"), go: "pedir_dia_bloqueio" },
+  ],
+};
+
+const pedirDiaBloqueio: State = {
+  enter: says(msg("pedir_dia_bloqueio")),
+  back: "bloqueios",
+  on: [
+    {
+      match: someDay,
+      act: (session, match) => ({
+        session:
+          match.choice?.kind === "day"
+            ? { ...session, draft: { bloqueio: { day: match.choice.day } } }
+            : session,
+      }),
+      go: "pedir_inicio_bloqueio",
+    },
+  ],
+};
+
+const pedirInicioBloqueio: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("pedir_inicio_bloqueio", { dia: session.draft.bloqueio?.day ?? "" })],
+  }),
+  back: "bloqueios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match) => ({
+        session: {
+          ...session,
+          draft: { bloqueio: { ...session.draft.bloqueio, start: match.number ?? 0 } },
+        },
+      }),
+      go: "pedir_fim_bloqueio",
+    },
+  ],
+};
+
+/** Quem está marcado dentro do pedaço que se quer travar. */
+function marcadosNaHora(day: Day, interval: Interval, ctx: Ctx): Appointment[] {
+  return ctx.agenda.filter(
+    (a) => a.day === day && overlaps({ start: a.start, end: a.start + a.minutes }, interval),
+  );
+}
+
+/**
+ * A última pergunta, e a única que escreve.
+ *
+ * Três coisas podem sair daqui: o bloqueio, a recusa por horário que não fecha,
+ * e a recusa por gente marcada dentro dele. As duas recusas não escrevem nada ,
+ * travar por cima de um agendamento seria desmarcar alguém sem avisar, que é
+ * exatamente o que o bot não pode fazer com uma tecla.
+ */
+const pedirFimBloqueio: State = {
+  enter: (session) => ({
+    session,
+    messages: [msg("pedir_fim_bloqueio", { de: session.draft.bloqueio?.start ?? 0 })],
+  }),
+  back: "bloqueios",
+  on: [
+    {
+      match: anyHour,
+      act: (session, match, ctx) => {
+        const rascunho = session.draft.bloqueio;
+        const day = rascunho?.day;
+        const start = rascunho?.start;
+        const end = match.number ?? 0;
+        const guardado: Session = { ...session, draft: { bloqueio: { ...rascunho, start: end } } };
+        if (day === undefined || start === undefined || end <= start) return { session: guardado };
+
+        const bloqueio: Session = {
+          ...session,
+          draft: { bloqueio: { day, start }, hora: end },
+        };
+        return marcadosNaHora(day, { start, end }, ctx).length > 0
+          ? { session: bloqueio }
+          : { session: bloqueio, effects: [{ kind: "block", block: { day, start, end } }] };
+      },
+      go: (session, ctx) => {
+        const { day, start } = session.draft.bloqueio ?? {};
+        const end = session.draft.hora;
+        if (day === undefined || start === undefined || end === undefined) return "hora_invalida";
+        return marcadosNaHora(day, { start, end }, ctx).length > 0 ? "hora_tem_gente" : "bloqueado";
+      },
+      exits: ["bloqueado", "hora_invalida", "hora_tem_gente"],
+    },
+  ],
+};
+
+const bloqueado: State = {
+  enter: (session) => ({
+    session,
+    messages: [
+      msg("bloqueado", {
+        dia: session.draft.bloqueio?.day ?? "",
+        de: session.draft.bloqueio?.start ?? 0,
+        ate: session.draft.hora ?? 0,
+      }),
+    ],
+  }),
+  goto: "bloqueios",
+};
+
+const desbloqueado: State = {
+  enter: (session) => ({
+    session,
+    messages: [
+      msg("desbloqueado", {
+        dia: session.draft.bloqueio?.day ?? "",
+        de: session.draft.bloqueio?.start ?? 0,
+      }),
+    ],
+  }),
+  goto: "bloqueios",
+};
+
+const horaTemGente: State = {
+  enter: (session, ctx) => {
+    const { day, start } = session.draft.bloqueio ?? {};
+    const end = session.draft.hora ?? 0;
+    const marcados =
+      day === undefined || start === undefined
+        ? []
+        : marcadosNaHora(day, { start, end }, ctx);
+    return {
+      session,
+      messages: [
+        msg("hora_tem_gente", {
+          itens: marcados.map((a) =>
+            msg("item_marcado_no_dia", {
+              dia: a.day,
+              hora: a.start,
+              nome: a.clientName,
+              servico: serviceName(ctx, a.serviceId),
+            }),
+          ),
+        }),
+      ],
+    };
+  },
+  goto: "bloqueios",
+};
+
 // --- o relatório -----------------------------------------------------------
 
 /**
@@ -1476,6 +1812,7 @@ const menuBarbeiro: State = {
     { match: option(4), go: "menu_relatorio" },
     { match: option(5), go: "catalogo" },
     { match: option(6), go: "dias_horarios" },
+    { match: option(7), go: "bloqueios" },
   ],
 };
 
@@ -1483,7 +1820,7 @@ export const BARBEIRO: Flow = {
   advance,
   start: "inicio_barbeiro",
   // O barbeiro não fica preso: se ele digitar três coisas que o bot não
-  // entende, o lugar para onde mandá-lo é o menu, não um humano — ele é o humano.
+  // entende, o lugar para onde mandá-lo é o menu, não um humano, ele é o humano.
   stuck: "menu_barbeiro",
   missLimit: 3,
   global: [
@@ -1522,6 +1859,7 @@ export const BARBEIRO: Flow = {
     novo_nome: novoNome,
     novo_preco: novoPreco,
     novo_tempo: novoTempo,
+    escolher_categoria: escolherCategoria,
     // Depois de mexer, a lista de novo: é ela que prova que mudou. Qual lista
     // depende do que estava sendo mexido, e é o rascunho que sabe disso.
     salvo: {
@@ -1539,6 +1877,7 @@ export const BARBEIRO: Flow = {
 
     dias_horarios: diasHorarios,
     editar_dia_semana: editarDiaSemana,
+    confirmar_fechar_semana: confirmarFecharSemana,
     editar_todos: editarTodos,
     igual_abre: igualAbre,
     igual_fecha: igualFecha,
@@ -1548,14 +1887,41 @@ export const BARBEIRO: Flow = {
     mudar_fechamento: mudarFechamento,
     mudar_almoco: mudarAlmoco,
     almoco_ate: almocoAte,
+    /**
+     * O erro devolve na pergunta que o produziu, e não no topo do ramo.
+     *
+     * Antes ele caía na lista da semana, e quem estava sete respostas adiante
+     * em "deixar todos iguais" perdia as seis certas junto com a errada. O
+     * rascunho não é apagado: só a resposta recusada não entrou nele, então
+     * repetir a pergunta continua de onde parou.
+     */
     horario_invalido: {
       enter: (session) => ({
         session,
         messages: [msg("horario_invalido")],
-        go: session.draft.weekday === undefined ? "dias_horarios" : "editar_dia_semana",
+        go:
+          session.draft.pergunta ??
+          (session.draft.weekday === undefined ? "dias_horarios" : "editar_dia_semana"),
       }),
-      exits: ["dias_horarios", "editar_dia_semana"],
+      exits: [
+        "mudar_abertura",
+        "mudar_fechamento",
+        "almoco_ate",
+        "igual_fecha",
+        "igual_almoco_ate",
+        "dias_horarios",
+        "editar_dia_semana",
+      ],
     },
+    bloqueios,
+    pedir_dia_bloqueio: pedirDiaBloqueio,
+    pedir_inicio_bloqueio: pedirInicioBloqueio,
+    pedir_fim_bloqueio: pedirFimBloqueio,
+    bloqueado,
+    desbloqueado,
+    hora_tem_gente: horaTemGente,
+    hora_invalida: { enter: says(msg("hora_invalida")), goto: "bloqueios" },
+
     dias_fechados: diasFechados,
     pedir_dia_fechado: pedirDiaFechado,
     dia_fechado: { enter: says(msg("dia_fechado")), goto: "dias_fechados" },

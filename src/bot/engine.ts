@@ -93,7 +93,7 @@ export type Flow = {
    * O `ctx` é uma foto tirada no começo do turno, e um estado que escreve e
    * mostra no mesmo turno mostraria a foto velha: o barbeiro salvava um preço
    * novo e lia a lista com o preço antigo. Aqui a tabela diz como avançar o
-   * mundo, e o interpretador só chama — ele continua sem saber o que é uma
+   * mundo, e o interpretador só chama, ele continua sem saber o que é uma
    * agenda, uma comanda ou um preço.
    *
    * Sem isto, a regra passa a ser "um estado ou escreve ou mostra", que é uma
@@ -176,7 +176,7 @@ function enter(
     if (!state) throw new Error(`estado desconhecido: ${current}`);
 
     // As ofertas pertencem ao estado que as fez. Entrar em qualquer estado
-    // apaga a lista anterior, e quem oferece põe a sua — sem isso, um "2"
+    // apaga a lista anterior, e quem oferece põe a sua. Sem isso, um "2"
     // respondido a uma pergunta de sim ou não seria resolvido contra a lista
     // que o estado passado tinha mostrado.
     const entered = state.enter({ ...moved, state: current, choices: [] }, ctx);

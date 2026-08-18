@@ -28,11 +28,13 @@
 > 1
 < mudar_abertura
 
+# O erro devolve na pergunta que o produziu, e não no topo do ramo: quem errou
+# a abertura responde a abertura de novo, sem refazer o caminho.
 > 20:00
 < horario_invalido
-< editar_dia_aberto
+< mudar_abertura
 
-# Recusado, ele continua na tela do dia — e sai dela pela lista.
+# E sai dela pelo passo atrás de sempre, que aqui é a tela do dia.
 > voltar
 < dias_horarios
 

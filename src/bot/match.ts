@@ -196,7 +196,7 @@ export const duration: Matcher = (input) => {
  * Só vale quando o fluxo diz que vale.
  *
  * Um estado que atende serviço e produto tem a mesma opção 2 significando duas
- * coisas — mudar o tempo, que só serviço tem, ou tirar da lista. Em vez de um
+ * coisas, mudar o tempo, que só serviço tem, ou tirar da lista. Em vez de um
  * `if` dentro do destino, a condição entra na própria transição, e o estado
  * continua sendo uma lista de "isto leva àquilo".
  */

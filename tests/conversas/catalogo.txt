@@ -21,8 +21,8 @@
 < salvo
 < catalogo
 
-# 4 é o acabamento: tempo novo, dito como o barbeiro fala.
-> 4
+# 5 é o acabamento: tempo novo, dito como o barbeiro fala.
+> 5
 < editar_servico
 
 > 2
@@ -32,8 +32,8 @@
 < salvo
 < catalogo
 
-# 15 serviços e 6 produtos, então 23 é "novo produto", a última linha da lista.
-> 23
+# 16 serviços e 6 produtos, então 24 é "novo produto", a última linha da lista.
+> 24
 < novo_produto
 
 > Água de coco
@@ -43,9 +43,9 @@
 < salvo
 < catalogo
 
-# A lista já tem a água de coco, então "novo serviço" andou de 22 para 23: o
+# A lista já tem a água de coco, então "novo serviço" andou de 23 para 24: o
 # que o bot mostra depois de escrever é o mundo com a escrita dentro.
-> 23
+> 24
 < novo_servico
 
 > Relaxamento
@@ -54,13 +54,19 @@
 > 60
 < novo_tempo
 
+# Um serviço ainda diz em que faixa da tabela ele entra. Só depois disso ele é
+# gravado: o rascunho espera a última resposta, como a comanda espera o
+# pagamento.
 > meia hora
+< escolher_categoria
+
+> 1
 < salvo
 < catalogo
 
 # Com o relaxamento entre os serviços e a água de coco entre os produtos, a
-# bala é a 22.
-> 22
+# bala é a 23.
+> 23
 < editar_produto
 
 > 2
@@ -72,22 +78,23 @@
 
 # O catálogo no fim: corte a 50, acabamento de 20 minutos, relaxamento novo,
 # água de coco nova e a bala fora.
-~ servico corte 60 5000
-~ servico barba 45 4000
-~ servico bigode 15 500
-~ servico pezinho 20 1500
-~ servico sobrancelha 15 1500
-~ servico cavanhaque 30 2000
-~ servico depilacao_nasal 15 1500
-~ servico limpeza_pele 45 4500
-~ servico hidratacao_cabelo 30 2000
-~ servico hidratacao_barba 30 2000
-~ servico pigmentacao_cabelo 30 3500
-~ servico pigmentacao_barba 30 3500
-~ servico progressiva 120 10000
-~ servico platinado 180 16000
-~ servico luzes_platinadas 180 16000
-~ servico relaxamento 30 6000
+~ servico corte 60 5000 barbearia
+~ servico barba 45 4000 barbearia
+~ servico corte_barba 90 7500 barbearia
+~ servico bigode 15 500 barbearia
+~ servico pezinho 20 1500 barbearia
+~ servico sobrancelha 15 1500 barbearia
+~ servico cavanhaque 30 2000 barbearia
+~ servico depilacao_nasal 15 1500 barbearia
+~ servico limpeza_pele 45 4500 tratamentos
+~ servico hidratacao_cabelo 30 2000 tratamentos
+~ servico hidratacao_barba 30 2000 tratamentos
+~ servico pigmentacao_cabelo 30 3500 tratamentos
+~ servico pigmentacao_barba 30 3500 tratamentos
+~ servico progressiva 120 10000 quimica
+~ servico platinado 180 16000 quimica
+~ servico luzes_platinadas 180 16000 quimica
+~ servico relaxamento 30 6000 barbearia
 ~ produto pomada 3000
 ~ produto shampoo 4000
 ~ produto oleo_barba 5000

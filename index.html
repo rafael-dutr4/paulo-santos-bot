@@ -48,6 +48,16 @@
         >
           Barbeiro
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="aba-ajuda"
+          aria-controls="vista-ajuda"
+          aria-selected="false"
+          tabindex="-1"
+        >
+          Ajuda
+        </button>
       </nav>
 
       <!-- --- a conversa do cliente --------------------------------------- -->
@@ -152,6 +162,9 @@
           <h2>Catálogo</h2>
           <ul id="catalogo"></ul>
 
+          <h2>Travados</h2>
+          <ul id="travados"></ul>
+
           <h2>Comandas</h2>
           <ul id="comandas"></ul>
 
@@ -211,6 +224,17 @@
             </svg>
           </button>
         </form>
+      </section>
+
+      <!--
+        --- a ajuda ------------------------------------------------------
+
+        O que o bot faz e como se pede cada coisa. O conteúdo não está aqui:
+        ele é dado, em `src/sim/ajuda.ts`, porque cada receita é uma conversa
+        que o teste roda no motor de verdade.
+      -->
+      <section id="vista-ajuda" class="vista" role="tabpanel" aria-labelledby="aba-ajuda" hidden>
+        <div id="ajuda"></div>
       </section>
     </div>
 

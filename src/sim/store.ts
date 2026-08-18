@@ -1,7 +1,7 @@
 /**
  * A memória do simulador: o `Store` da porta, implementado em `localStorage`.
  *
- * Tudo aqui é um `JSON.stringify` porque tudo acima daqui é valor puro — a
+ * Tudo aqui é um `JSON.stringify` porque tudo acima daqui é valor puro, a
  * sessão, a agenda, a comanda. Uma futura integração troca este arquivo por um
  * banco de verdade, implementa as mesmas quatro operações de `src/store.ts`, e
  * nada do motor nem do fluxo fica sabendo.

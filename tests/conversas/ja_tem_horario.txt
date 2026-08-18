@@ -6,12 +6,14 @@
 
 > oi
 < saudacao
-< menu
 
 > 1
 < ja_tem_horario
 
 > sim
+< escolher_faixa
+
+> 1
 < escolher_servico
 
 > 1

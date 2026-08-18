@@ -76,6 +76,8 @@ function resumo(choice: Choice): string {
       return "voltar";
     case "weekday":
       return `semana ${choice.weekday}`;
+    case "bloqueio":
+      return `travado ${choice.day} ${hhmm(choice.start)}`;
     case "fechados":
       return "dias fechados";
     case "todos":
@@ -83,6 +85,7 @@ function resumo(choice: Choice): string {
     case "item":
       return `item ${choice.index}`;
     case "payment":
+    case "categoria":
       return choice.id;
   }
 }
@@ -91,7 +94,7 @@ function resumo(choice: Choice): string {
  * O banco inteiro na tela: a agenda, o catálogo e as comandas.
  *
  * São as duas metades do mesmo dia. A agenda é a promessa, e a comanda é o que
- * aconteceu com ela — por isso ficam uma embaixo da outra, e não em telas
+ * aconteceu com ela, por isso ficam uma embaixo da outra, e não em telas
  * diferentes.
  */
 export function showAgenda(db: Db): void {
@@ -106,6 +109,15 @@ export function showAgenda(db: Db): void {
     "minutes" in item
       ? `${item.name} · ${item.minutes} min · ${brl(item.price)}`
       : `${item.name} · ${brl(item.price)}`,
+  );
+
+  // Um bloqueio não aparece na agenda nem na comanda: ele não é promessa nem
+  // registro. Sem esta lista ele seria a única coisa do banco invisível daqui.
+  fill(
+    "travados",
+    "nada travado",
+    db.settings.blocks,
+    (block) => `${dia(block.day)}, ${hhmm(block.start)} às ${hhmm(block.end)}`,
   );
 
   fill("comandas", "nenhuma comanda fechada", db.comandas, (comanda) => {

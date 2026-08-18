@@ -3,7 +3,7 @@
  *
  * Parece o leitor de horas e não é: `1h30` como hora do dia é uma e meia da
  * madrugada, e como duração é uma hora e meia de cadeira. O mesmo texto, dois
- * significados, e quem sabe qual dos dois está perguntando é o fluxo — por isso
+ * significados, e quem sabe qual dos dois está perguntando é o fluxo, por isso
  * são dois leitores e não um com uma opção.
  *
  * Sai em minutos, que é como toda duração deste projeto é contada.

@@ -9,7 +9,7 @@
  */
 
 import type { Comanda } from "./comanda.ts";
-import type { Product, Service, ServiceId } from "./shop.ts";
+import type { Block, Product, Service, ServiceId } from "./shop.ts";
 import type { Day, Minutes, Moment, Weekday } from "./time.ts";
 import { compare } from "./time.ts";
 import type { Interval } from "./shop.ts";
@@ -48,7 +48,12 @@ export type Effect =
   // Os dias: o horário de um dia da semana, e as datas em que não se abre.
   | { kind: "hours"; weekday: Weekday; intervals: Interval[] }
   | { kind: "close_day"; day: Day }
-  | { kind: "open_day"; day: Day };
+  | { kind: "open_day"; day: Day }
+  // Um pedaço de um dia, travado e destravado. Como o dia fechado, ele é
+  // endereçado pelo que é (o dia e a hora em que começa) e não por um id
+  // sorteado, reaplicar o mesmo turno trava o mesmo intervalo, não dois.
+  | { kind: "block"; block: Block }
+  | { kind: "unblock"; day: Day; start: Minutes };
 
 /**
  * The id is derived from the booking, not generated.
@@ -71,7 +76,9 @@ export function apply(agenda: Agenda, effect: Effect): Agenda {
     case "cancel":
       return agenda.filter((a) => a.id !== effect.id);
     // Nada que não seja um agendamento mexe na agenda: fechar comanda, mudar um
-    // preço e tirar um produto da lista deixam o que está marcado onde está.
+    // preço, travar uma hora e tirar um produto da lista deixam o que está
+    // marcado onde está. Um bloqueio nem podia mexer: ele só existe onde não
+    // há ninguém marcado, e é o fluxo que recusa o contrário.
     default:
       return agenda;
   }

@@ -108,7 +108,7 @@ test(`${qual}: no goto walks in a circle`, () => {
 test(`${qual}: every step back is a state, and one the voltar rule admits it reaches`, () => {
   const declared = new Set(backTargets(FLOW));
   // Sem `back`, voltar cai no menu daquela tabela, então ele tem que estar
-  // declarado — é o destino que toda conversa tem garantido.
+  // declarado, é o destino que toda conversa tem garantido.
   assert.ok(declared.size > 0, "a regra de voltar não declarou destino nenhum");
   for (const [name, state] of Object.entries(FLOW.states)) {
     if (!state.back) continue;
@@ -128,7 +128,8 @@ test("a step back never walks forward", () => {
   // um passo atrás que pula dois é a mesma perda que mandar tudo para o menu.
   assert.equal(FLOW.states["escolher_hora"]?.back, "escolher_dia");
   assert.equal(FLOW.states["escolher_dia"]?.back, "escolher_servico");
-  assert.equal(FLOW.states["escolher_servico"]?.back, undefined);
+  assert.equal(FLOW.states["escolher_servico"]?.back, "escolher_faixa");
+  assert.equal(FLOW.states["escolher_faixa"]?.back, undefined);
 });
 
 test("a comanda só fecha na última pergunta", () => {

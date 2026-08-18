@@ -1,8 +1,8 @@
 # O fluxo
 
 São duas conversas, e duas tabelas: a do cliente em `src/bot/flow.ts` e a do
-barbeiro em `src/bot/barbeiro.ts`. O telefone escolhe qual roda — quem está em
-`SHOP.barbers` fala com a segunda — e o interpretador é o mesmo para as duas.
+barbeiro em `src/bot/barbeiro.ts`. O telefone escolhe qual roda, quem está em
+`SHOP.barbers` fala com a segunda, e o interpretador é o mesmo para as duas.
 Este documento é a mesma tabela escrita para ler, estado por estado.
 
 Convenções:
@@ -31,14 +31,14 @@ isso que ninguém fica preso dentro de um agendamento pela metade.
 Toda lista numerada termina em `N - Voltar`, e esse número faz o mesmo que a
 palavra. Quem lê um menu numerado não adivinha que também pode digitar uma
 palavra, então a saída precisa estar na lista. A última linha é posta por
-`numbered()`, que sabe quantos itens saíram, e atendida por uma regra global —
+`numbered()`, que sabe quantos itens saíram, e atendida por uma regra global ,
 um estado novo com lista ganha a saída de graça. Nos menus de tamanho fixo, o
 número é uma constante usada no texto e na transição.
 
 Os dois menus de entrada (`menu` e `menu_barbeiro`) não têm essa linha: atrás
 deles não há nada, e uma opção que repete o mesmo menu é ruído.
 
-Entrar em qualquer estado apaga as ofertas do estado anterior — elas pertencem a
+Entrar em qualquer estado apaga as ofertas do estado anterior, elas pertencem a
 quem as fez. Sem isso, um `2` respondido a uma pergunta de sim ou não seria
 resolvido contra a lista que a tela passada mostrou.
 
@@ -50,6 +50,7 @@ ele já tinha escolhido:
 | --- | --- |
 | `escolher_hora` | `escolher_dia` |
 | `escolher_dia` | `escolher_servico` |
+| `escolher_servico` | `escolher_faixa` |
 
 Três respostas seguidas que o bot não entende levam a `humano`. O contador
 zera assim que uma resposta é entendida.
@@ -111,7 +112,7 @@ barbearia dentro do leitor de horas.
 | `sem_horarios` | Não há horário livre no horizonte da agenda. |
 
 O aviso não impede nada: marcar dois horários é permitido, porque o cliente que
-corta o cabelo e leva o filho faz isso. Ele existe para quem esqueceu — e o
+corta o cabelo e leva o filho faz isso. Ele existe para quem esqueceu, e o
 `não` leva justamente para onde dá para cancelar ou remarcar o que já existe.
 
 A reserva sai do motor como efeito, não como escrita:
@@ -153,6 +154,7 @@ porque ele é o humano.
 | 4 | `menu_relatorio` |
 | 5 | `catalogo` |
 | 6 | `dias_horarios` |
+| 7 | `bloqueios` |
 
 ## A agenda
 
@@ -189,7 +191,7 @@ agendamento.
 | `compareceu` | O cliente veio? `não` fecha a comanda como falta, na hora. |
 | `comanda` | As linhas e o total. 1 acrescenta um serviço, 2 acrescenta um produto, 3 corrige um valor, 4 vai para o pagamento. |
 | `servico_extra` | A tabela de serviços, para o pezinho que saiu junto. |
-| `produto_extra` | A prateleira: pomada, shampoo, refrigerante. Um produto não ocupa a cadeira e não aparece no menu do cliente — ele nasce e morre dentro da comanda. |
+| `produto_extra` | A prateleira: pomada, shampoo, refrigerante. Um produto não ocupa a cadeira e não aparece no menu do cliente, ele nasce e morre dentro da comanda. |
 | `escolher_item` | Qual linha corrigir, quando há mais de uma. Com uma só, o bot não pergunta. |
 | `pedir_valor` | Aceita `45`, `45,50`, `R$ 45`, e `tirar` para remover a linha. |
 | `escolher_pagamento` | As formas que a barbearia aceita, de `SHOP.payments`. É a última pergunta de propósito. |
@@ -210,13 +212,13 @@ mesma razão que `book` substitui pelo id.
 
 O preço e o tempo mudam com o mercado, e produto novo chega toda semana. Por
 isso o catálogo é a única parte da barbearia que mora no banco e não em
-`shop.ts` — o resto (endereço, horário, formas de pagamento) muda de ano em ano
+`shop.ts`, o resto (endereço, horário, formas de pagamento) muda de ano em ano
 e continua sendo dado de código. A casca monta o `Shop` de cada turno pondo o
 catálogo guardado por cima da constante, e nada acima disso percebe.
 
 | estado | comportamento |
 | --- | --- |
-| `catalogo` | Uma lista só, serviços e produtos, com "novo serviço" e "novo produto" como as duas últimas linhas — a mesma numeração de sempre. |
+| `catalogo` | Uma lista só, serviços e produtos, com "novo serviço" e "novo produto" como as duas últimas linhas, a mesma numeração de sempre. |
 | `editar_item` | Serviço: preço, tempo, tirar. Produto: preço, tirar. A opção 2 significa coisas diferentes nos dois, e é a transição que carrega a condição, não o destino. |
 | `mudar_preco` / `mudar_tempo` | Aceitam `50`, `R$ 50`, e `30`, `1h`, `1h30`, `meia hora`. |
 | `confirmar_tirar` | Tirar da lista não mexe em comanda nenhuma: elas guardam o nome e o preço do dia. |
@@ -248,16 +250,16 @@ depender de alguém recompilar.
 | --- | --- |
 | `dias_horarios` | A semana, de segunda a domingo, com o horário de cada dia ou "fechado", mais a linha de todos os dias e a das datas fechadas. |
 | `editar_todos` | O mesmo editor apontado para a semana inteira. De 1 a 3, cada resposta mexe num campo só e deixa o resto de cada dia como estava. |
-| `igual_abre` → `igual_fecha` → `igual_almoco` → `almoco_ate` | "Deixar todos iguais": pergunta o dia inteiro e repete em todos os que abrem. É o caso comum de uma barbearia — de segunda a sexta o dia é o mesmo, o sábado é a exceção —, e depois cada dia ainda se muda sozinho. Nada é escrito antes da última resposta. |
+| `igual_abre` → `igual_fecha` → `igual_almoco` → `almoco_ate` | "Deixar todos iguais": pergunta o dia inteiro e repete em todos os que abrem. É o caso comum de uma barbearia (de segunda a sexta o dia é o mesmo, o sábado é a exceção), e depois cada dia ainda se muda sozinho. Nada é escrito antes da última resposta. |
 
 Nos dois caminhos, dia fechado continua fechado: abrir a semana toda por engano
 seria o tipo de estrago que o bot não pode fazer com uma tecla.
 | `editar_dia_semana` | Abre, fecha, almoço e "fechar neste dia da semana". Num dia fechado só existe "abrir", e abrir copia o expediente de um dia que já abre. |
-| `mudar_abertura` / `mudar_fechamento` / `mudar_almoco` → `almoco_ate` | Aceitam a hora como o cliente já dizia (`18:00`, `seis da tarde`). Tirar o almoço é a opção `0`, porque não é uma hora — e ela só aparece nos dias que têm almoço. |
-| `horario_invalido` | Abrir depois de fechar não é horário, é engano. Nada é salvo — e com a semana inteira como alvo, um dia que não fecha derruba a mudança toda, porque salvar em cinco e pular o sexto em silêncio é pior do que recusar. |
+| `mudar_abertura` / `mudar_fechamento` / `mudar_almoco` → `almoco_ate` | Aceitam a hora como o cliente já dizia (`18:00`, `seis da tarde`). Tirar o almoço é a opção `0`, porque não é uma hora, e ela só aparece nos dias que têm almoço. |
+| `horario_invalido` | Abrir depois de fechar não é horário, é engano. Nada é salvo, e com a semana inteira como alvo, um dia que não fecha derruba a mudança toda, porque salvar em cinco e pular o sexto em silêncio é pior do que recusar. |
 | `dias_fechados` | As datas de hoje para a frente. Escolher uma abre de novo; a última linha fecha um dia novo. |
 | `pedir_dia_fechado` | Lê a data como o resto do bot (`25/12`, `sexta`, `amanhã`). |
-| `dia_tem_gente` | Um dia com horário marcado não fecha. O bot mostra quem está marcado e manda cancelar ou remarcar antes — falar com essas pessoas não é trabalho de bot. |
+| `dia_tem_gente` | Um dia com horário marcado não fecha. O bot mostra quem está marcado e manda cancelar ou remarcar antes, falar com essas pessoas não é trabalho de bot. |
 
 Na conversa o expediente é abre, fecha e almoço, que é como uma pessoa descreve
 o próprio dia. No dado continuam sendo intervalos, porque é assim que a
@@ -271,8 +273,45 @@ tradução, nos dois sentidos.
 ```
 
 Fechar um dia no lado do barbeiro faz o dia sumir da lista do cliente no turno
-seguinte — é a mesma conta de sempre em `slots.ts`, lendo um `shop` que agora
+seguinte, é a mesma conta de sempre em `slots.ts`, lendo um `shop` que agora
 vem do banco.
+
+## As horas travadas
+
+Fechar um dia tira o dia inteiro da conta. Travar tira um pedaço de um dia que
+abre: o médico às três da sexta, o casamento do primo às cinco. É a mesma ideia
+num tamanho menor, e por isso mora no mesmo lugar, nos ajustes, e não na
+agenda. Um bloqueio não tem cliente, não tem serviço, não vira comanda e não
+entra no relatório: ele não é uma promessa feita a ninguém.
+
+| estado | comportamento |
+| --- | --- |
+| `bloqueios` | O que está travado de hoje para a frente, na ordem, com "travar um horário" na última linha, a mesma forma de `dias_fechados`. Escolher um travado destrava, sem confirmação, como escolher uma data fechada reabre. |
+| `pedir_dia_bloqueio` | Lê a data como o resto do bot (`sexta`, `21/08`, `amanhã`). |
+| `pedir_inicio_bloqueio` → `pedir_fim_bloqueio` | Lê a hora como o cliente já dizia (`15:00`, `três da tarde`). Nada é escrito antes da última resposta: desistir no meio não deixa meio bloqueio gravado. |
+| `hora_invalida` | O fim antes do começo não é horário, é engano. Nada é salvo. |
+| `hora_tem_gente` | Travar por cima de um agendamento seria desmarcar alguém sem avisar. O bot mostra quem está lá e devolve a decisão, como `dia_tem_gente` faz com o dia inteiro. |
+
+```
+{ kind: "block"; block: { day, start, end } }   { kind: "unblock"; day, start }
+```
+
+Um bloqueio é endereçado pelo dia e pela hora em que começa, e não por um id
+sorteado, como toda id deste projeto. Travar o mesmo começo duas vezes trava
+uma vez só.
+
+Do outro lado nada mudou. `freeSlots` já subtraía intervalos ocupados, e um
+bloqueio entrou nessa lista junto com os agendamentos:
+
+```ts
+const busy = [...busyOn(agenda, day), ...blockedOn(shop, day)];
+```
+
+É por isso que a conta ficou de uma linha: a sobreposição já estava escrita, e
+faltava só somar mais uma lista de intervalos à que ela subtrai. Um corte de uma
+hora também deixa de caber às 14:30 quando as 15:00 estão travadas, porque ele
+terminaria dentro do bloqueio, a mesma regra que um agendamento vizinho já
+impunha.
 
 ## O relatório
 
@@ -287,7 +326,7 @@ O relatório soma as comandas do período: o faturado (partido entre serviços e
 produtos), quantos atendimentos, o que saiu por serviço e por produto, quanto
 entrou por forma de pagamento e quantos faltaram. O bloco de produtos só aparece
 quando saiu algum.
-Ele nunca lê a tabela de preços — o preço já está copiado dentro de cada
+Ele nunca lê a tabela de preços, o preço já está copiado dentro de cada
 comanda, e é isso que faz um aumento em outubro não reescrever agosto.
 
 ## O que o fluxo não faz
@@ -300,3 +339,38 @@ comanda, e é isso que faz um aumento em outubro não reescrever agosto.
   o que é trabalho da integração.
 - O barbeiro não marca nem cancela horário pela conversa dele. Ele lê a agenda e
   fecha comanda; mexer na agenda continua sendo do lado do cliente.
+
+
+## O que mudou, e por quê
+
+Cinco mudanças recentes, todas com o achado que as motivou.
+
+**A saudação já traz o menu.** Chegar recebia duas mensagens seguidas, e só a
+segunda pedia resposta. `saudacao` agora é o `menu` com outra abertura: herda as
+transições dele por espalha, e uma opção nova entra num lugar só. Repetir a
+pergunta depois de um erro mostra o menu, e não "olá" de novo.
+
+**A tabela é partida em faixas.** `escolher_servico` mostrava dezesseis linhas,
+mais do que as dez que uma lista de opções do WhatsApp abre, então o passo mais
+usado do bot era o único que não podia virar lista. Agora `escolher_faixa` vem
+antes: três linhas ali, no máximo oito depois, e as duas cabem numa lista. As
+faixas são as mesmas da tabela da parede (Barbearia, Tratamentos, Química), são
+código e não dado, e o que o barbeiro escolhe num serviço novo é em qual delas
+ele entra.
+
+**Uma hora inválida volta na pergunta que a produziu.** `horario_invalido`
+devolvia para o topo do ramo, e quem errava a última resposta de "deixar todos
+iguais" perdia as seis certas junto. A transição que falha guarda o nome da
+pergunta em `draft.pergunta`, e o erro volta exatamente nela, com o resto do
+rascunho intacto.
+
+**Fechar comanda devolve para a fila.** `comanda_fechada` e `comanda_faltou`
+voltavam ao menu, e o barbeiro pagava duas mensagens de navegação entre uma
+comanda e a seguinte. Agora voltam para `comandas`, como `tirado` volta para o
+catálogo e `dia_fechado` para a lista de datas. Fila vazia continua caindo em
+`nada_a_fechar` sozinha.
+
+**Fechar um dia da semana pede confirmação.** Era a única mudança destrutiva sem
+uma: tirar um serviço confirma, reabrir uma data confirma, cancelar um horário
+confirma. `confirmar_fechar_semana` fecha o conjunto, e a recusa por dia com
+gente marcada continua vindo antes dela.

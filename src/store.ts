@@ -7,7 +7,7 @@
  *
  * Hoje existe uma implementação, o `localStorage` do simulador. Amanhã existe
  * outra, um Postgres atrás de um adaptador de WhatsApp, e o que muda é este
- * arquivo ganhar um segundo vizinho — não o fluxo, não o motor, não o
+ * arquivo ganhar um segundo vizinho, não o fluxo, não o motor, não o
  * relatório. É por isso que a porta é estreita de propósito: quatro operações,
  * e uma delas é pura.
  *
@@ -20,7 +20,8 @@ import type { Ctx, Session } from "./bot/session.ts";
 import type { Agenda, Effect } from "./shop/agenda.ts";
 import { apply as applyToAgenda } from "./shop/agenda.ts";
 import type { Comanda } from "./shop/comanda.ts";
-import type { Settings } from "./shop/shop.ts";
+import type { Day, Minutes } from "./shop/time.ts";
+import type { Block, Settings } from "./shop/shop.ts";
 import { SHOP, settingsOf, withSettings } from "./shop/shop.ts";
 
 /**
@@ -112,6 +113,27 @@ export function write(db: Db, effects: Effect[]): Db {
             holidays: current.settings.holidays.filter((day) => day !== effect.day),
           },
         };
+      // Travar o mesmo começo duas vezes é travar uma: o efeito descreve como
+      // aquele pedaço do dia fica, e não uma coisa a mais na lista.
+      case "block":
+        return {
+          ...current,
+          settings: {
+            ...current.settings,
+            blocks: ordenados([
+              ...current.settings.blocks.filter((b) => !mesmo(b, effect.block)),
+              effect.block,
+            ]),
+          },
+        };
+      case "unblock":
+        return {
+          ...current,
+          settings: {
+            ...current.settings,
+            blocks: current.settings.blocks.filter((b) => !mesmo(b, effect)),
+          },
+        };
       case "remove":
         return {
           ...current,
@@ -143,6 +165,15 @@ export function advance(ctx: Ctx, effects: Effect[]): Ctx {
     comandas: db.comandas,
     shop: withSettings(ctx.shop, db.settings),
   };
+}
+
+/** Dois bloqueios são o mesmo quando começam no mesmo minuto do mesmo dia. */
+function mesmo(a: { day: Day; start: Minutes }, b: { day: Day; start: Minutes }): boolean {
+  return a.day === b.day && a.start === b.start;
+}
+
+function ordenados(blocks: Block[]): Block[] {
+  return [...blocks].sort((a, b) => (a.day === b.day ? a.start - b.start : a.day < b.day ? -1 : 1));
 }
 
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {

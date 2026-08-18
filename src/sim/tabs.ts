@@ -1,10 +1,10 @@
 /**
- * As três telas do simulador, uma de cada vez.
+ * As telas do simulador, uma de cada vez.
  *
  * Não há roteador nem framework: uma aba é um `<button role="tab">` que aponta
  * para a sua vista por `aria-controls`, e trocar de aba é mexer em
  * `aria-selected` e no `hidden` da vista. Os atributos de acessibilidade são
- * também o estado — não existe uma segunda cópia de "qual aba está aberta"
+ * também o estado, não existe uma segunda cópia de "qual aba está aberta"
  * para sair do lugar.
  */
 

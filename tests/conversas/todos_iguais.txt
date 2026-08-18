@@ -1,0 +1,42 @@
+# Deixar a semana inteira igual, errando a hora no meio do caminho.
+#
+# É a corrente mais funda do bot: quatro perguntas seguidas, e nada é gravado
+# antes da última. Por isso o erro não pode custar o caminho todo. Fechar antes
+# de abrir é recusado, e a recusa devolve na pergunta que falhou, com as
+# respostas anteriores ainda no rascunho.
+# now: 2026-08-11 10:00
+# phone: 5577999999999
+
+> oi
+< saudacao_barbeiro
+< menu_barbeiro
+
+> 6
+< dias_horarios
+
+# 8 é "todos os dias de uma vez", depois dos sete dias da semana.
+> 8
+< editar_todos
+
+> 4
+< igual_abre
+
+> 09:00
+< igual_fecha
+
+# Fecha antes de abrir: recusado. Antes isto caía na lista da semana e levava
+# junto a abertura já respondida.
+> 08:00
+< horario_invalido
+< igual_fecha
+
+# A pergunta volta sabendo que abre às nove: o rascunho não foi apagado.
+> 19:00
+< igual_almoco
+
+> 12:00
+< almoco_ate
+
+> 13:00
+< salvo
+< dias_horarios

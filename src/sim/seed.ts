@@ -81,7 +81,7 @@ export function futuro(shop: Shop, db: Db, now: Moment): Effect[] {
  *
  * Os dias que passaram saem todos fechados, para o relatório ter o que somar. O
  * dia de hoje só recebe os horários que já aconteceram, e eles ficam em aberto
- * de propósito — é a lista que "3 - Fechar comanda" precisa ter.
+ * de propósito, é a lista que "3 - Fechar comanda" precisa ter.
  */
 export function historico(shop: Shop, db: Db, now: Moment): Effect[] {
   let atual = db;
@@ -96,7 +96,7 @@ export function historico(shop: Shop, db: Db, now: Moment): Effect[] {
     for (const fatia of ESPALHADOS) {
       // Cada dia tem um tamanho, e quem já está marcado conta. É o que faz
       // clicar duas vezes não empilhar um segundo turno de atendimentos nos
-      // buracos que sobraram, sem pular um dia onde o cliente já marcou —
+      // buracos que sobraram, sem pular um dia onde o cliente já marcou ,
       // esse dia é justamente o que o barbeiro quer ver cheio.
       //
       // Clicar de novo pode completar um dia que ficou curto (hoje, onde só

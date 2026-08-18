@@ -8,7 +8,7 @@
  *                 aplicar os efeitos, mandar as mensagens
  *
  * O simulador tem duas destas: a do cliente e a do barbeiro. As duas rodam este
- * arquivo, com o mesmo `Store` atrás, e o que muda entre elas é o telefone —
+ * arquivo, com o mesmo `Store` atrás, e o que muda entre elas é o telefone ,
  * que é o que faz `reply()` escolher a tabela de estados. Um horário marcado na
  * conversa do cliente aparece na agenda do barbeiro sem nenhuma ligação entre
  * as duas telas, porque as duas leem o mesmo banco.
@@ -22,6 +22,7 @@ import type { Moment } from "../shop/time.ts";
 import { say } from "../text/say.ts";
 import type { Bubble } from "./chat.ts";
 import { append, paint, scroll, typing } from "./chat.ts";
+import { lista } from "./lista.ts";
 import type { Store } from "../store.ts";
 
 /** Quanto o bot "digita" entre um balão e outro. */
@@ -62,7 +63,7 @@ export function conversa(wiring: Wiring): Conversa {
    *
    * A barbearia não é mais a constante: é a constante com o catálogo guardado
    * por cima. Um preço que o barbeiro mudou na conversa dele aparece no menu do
-   * cliente no turno seguinte, sem ninguém avisar ninguém — as duas conversas
+   * cliente no turno seguinte, sem ninguém avisar ninguém, as duas conversas
    * leem o mesmo banco.
    */
   function ctx(at: Moment): Ctx {
@@ -80,7 +81,7 @@ export function conversa(wiring: Wiring): Conversa {
 
     const mine: Bubble = { from: "cliente", text, at: hhmm(at.at) };
     transcript().push(mine);
-    append(chat, mine);
+    append(chat, mine, pick);
 
     const outcome = reply(store.session(phone), text, ctx(at));
     store.saveSession(outcome.session);
@@ -89,16 +90,27 @@ export function conversa(wiring: Wiring): Conversa {
 
     // Um balão de cada vez, com uma pausa no meio. Uma resposta de três
     // mensagens chega como três mensagens, que é como o WhatsApp se comporta.
-    for (const message of outcome.messages) {
+    //
+    // A lista fica só na última: as ofertas guardadas na sessão são as do
+    // estado onde o turno parou, e um menu que passou no meio do caminho já não
+    // responde por elas.
+    const ultima = outcome.messages.length - 1;
+    for (const [i, message] of outcome.messages.entries()) {
       const stop = typing(chat);
       await sleep(DELAY);
       stop();
-      const bubble: Bubble = { from: "bot", text: say(message), at: hhmm(at.at) };
+      const dito = say(message);
+      const oferta = i === ultima ? lista(dito, outcome.session.choices) : null;
+      const bubble: Bubble = { from: "bot", text: dito, at: hhmm(at.at) };
+      if (oferta) bubble.lista = oferta;
       transcript().push(bubble);
-      append(chat, bubble);
+      append(chat, bubble, pick);
       changed();
     }
   }
+
+  /** Tocar numa linha da lista é digitar o número dela. */
+  const pick = (n: number): void => void send(String(n));
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -111,12 +123,12 @@ export function conversa(wiring: Wiring): Conversa {
 
   return {
     send,
-    paint: () => paint(chat, transcript()),
+    paint: () => paint(chat, transcript(), pick),
     scroll: () => scroll(chat),
     reset: () => {
       transcript().length = 0;
       forget();
-      paint(chat, transcript());
+      paint(chat, transcript(), pick);
       changed();
     },
   };

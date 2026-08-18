@@ -8,7 +8,9 @@
 
 > oi
 < saudacao
-< menu
+
+> 1
+< escolher_faixa
 
 > 1
 < escolher_servico
@@ -32,6 +34,9 @@
 > não
 < nao_agendado
 < menu
+
+> 1
+< escolher_faixa
 
 > 1
 < escolher_servico

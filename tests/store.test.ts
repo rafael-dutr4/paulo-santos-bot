@@ -78,3 +78,44 @@ test("o banco de antes não muda quando o de depois é escrito", () => {
   write(antes, [{ kind: "close", comanda: COMANDA }]);
   assert.deepEqual(antes.comandas, [], "escrever devolve um banco novo");
 });
+
+test("travar guarda o pedaço do dia, e travar de novo o mesmo começo substitui", () => {
+  const um = write(emptyDb(), [
+    { kind: "block", block: { day: "2026-08-11", start: 900, end: 960 } },
+  ]);
+  assert.deepEqual(um.settings.blocks, [{ day: "2026-08-11", start: 900, end: 960 }]);
+
+  const dois = write(um, [
+    { kind: "block", block: { day: "2026-08-11", start: 900, end: 1020 } },
+  ]);
+  assert.deepEqual(dois.settings.blocks, [{ day: "2026-08-11", start: 900, end: 1020 }]);
+});
+
+test("os travados ficam em ordem de dia e hora", () => {
+  const db = write(emptyDb(), [
+    { kind: "block", block: { day: "2026-08-12", start: 600, end: 660 } },
+    { kind: "block", block: { day: "2026-08-11", start: 900, end: 960 } },
+    { kind: "block", block: { day: "2026-08-11", start: 600, end: 660 } },
+  ]);
+  assert.deepEqual(
+    db.settings.blocks.map((b) => `${b.day} ${b.start}`),
+    ["2026-08-11 600", "2026-08-11 900", "2026-08-12 600"],
+  );
+});
+
+test("destravar tira pelo dia e pela hora de começo", () => {
+  const db = write(emptyDb(), [
+    { kind: "block", block: { day: "2026-08-11", start: 900, end: 960 } },
+    { kind: "block", block: { day: "2026-08-11", start: 600, end: 660 } },
+    { kind: "unblock", day: "2026-08-11", start: 900 },
+  ]);
+  assert.deepEqual(db.settings.blocks, [{ day: "2026-08-11", start: 600, end: 660 }]);
+});
+
+test("travar não mexe na agenda", () => {
+  const db = write(emptyDb(), [
+    { kind: "book", appointment: APPOINTMENT },
+    { kind: "block", block: { day: "2026-08-11", start: 900, end: 960 } },
+  ]);
+  assert.equal(db.agenda.length, 1);
+});

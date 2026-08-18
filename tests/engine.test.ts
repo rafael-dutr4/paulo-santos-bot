@@ -108,7 +108,7 @@ test("an unknown state name is a bug in the table, and it says so", () => {
 test("an hour taken between the offer and the sim is not booked", () => {
   let session = newSession("5511911111111");
   let agenda: Agenda = [];
-  for (const text of ["oi", "1", "1", "1", "15:00", "Rafa"]) {
+  for (const text of ["oi", "1", "1", "1", "1", "15:00", "Rafa"]) {
     const outcome = reply(session, text, ctx(agenda));
     session = outcome.session;
     agenda = applyAll(agenda, outcome.effects);
@@ -137,5 +137,7 @@ test("an hour taken between the offer and the sim is not booked", () => {
 test("the real flow starts silent, because on WhatsApp the client speaks first", () => {
   const session = newSession("5511911111111");
   assert.equal(session.state, FLOW.start);
-  assert.deepEqual(reply(session, "oi", ctx()).messages.map((m) => m.key), ["saudacao", "menu"]);
+  // Uma mensagem só: a saudação já traz o menu, para o bot não falar duas vezes
+  // seguidas enquanto quem chegou espera para poder responder.
+  assert.deepEqual(reply(session, "oi", ctx()).messages.map((m) => m.key), ["saudacao"]);
 });

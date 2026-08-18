@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import type { Agenda, Appointment } from "../src/shop/agenda.ts";
+import type { Shop } from "../src/shop/shop.ts";
 import { SHOP, serviceById } from "../src/shop/shop.ts";
-import { daysWithSlots, freeSlots, isOpen, overlaps } from "../src/shop/slots.ts";
+import { blockedOn, daysWithSlots, freeSlots, isOpen, overlaps, upcomingBlocks } from "../src/shop/slots.ts";
 import { hhmm } from "../src/shop/time.ts";
 
 const corte = serviceById(SHOP, "corte")!;
@@ -97,4 +98,62 @@ test("the day list skips the closed days and the full ones", () => {
   ]);
 
   assert.equal(daysWithSlots(SHOP, fullDay(MONDAY.day), corte, MONDAY, 5)[0], "2026-08-11");
+});
+
+
+// --- as horas travadas -----------------------------------------------------
+
+/** A barbearia com um pedaço de terça travado: 15:00 às 16:00. */
+const travada: Shop = { ...SHOP, blocks: [{ day: TUESDAY, start: 15 * 60, end: 16 * 60 }] };
+
+function livres(shop: Shop, service = corte): string[] {
+  return freeSlots(shop, [], TUESDAY, service, MONDAY).map(hhmm);
+}
+
+test("um bloqueio tira as horas do intervalo travado", () => {
+  const antes = livres(SHOP);
+  const depois = livres(travada);
+  assert.ok(antes.includes("15:00"));
+  assert.ok(antes.includes("15:30"));
+  assert.ok(!depois.includes("15:00"));
+  assert.ok(!depois.includes("15:30"));
+});
+
+test("um bloqueio não mexe no resto do dia", () => {
+  const perdidas = livres(SHOP).filter((hora) => !livres(travada).includes(hora));
+  // Um corte leva uma hora: 14:30 também deixa de caber, porque terminaria
+  // dentro do bloqueio. É a mesma sobreposição que um agendamento causa.
+  assert.deepEqual(perdidas, ["14:30", "15:00", "15:30"]);
+});
+
+test("um bloqueio só vale no dia dele", () => {
+  assert.deepEqual(blockedOn(travada, "2026-08-12"), []);
+  assert.deepEqual(blockedOn(travada, TUESDAY), [{ start: 900, end: 960 }]);
+});
+
+test("um dia que só tem hora livre dentro do bloqueio some da lista de dias", () => {
+  // A progressiva leva duas horas e só cabe de manhã ou cedo à tarde; travar a
+  // tarde inteira de terça tira a terça dos dias oferecidos.
+  const tardeTravada: Shop = {
+    ...SHOP,
+    blocks: [{ day: TUESDAY, start: 8 * 60, end: 20 * 60 }],
+  };
+  const dias = daysWithSlots(tardeTravada, [], progressiva, MONDAY, 6);
+  assert.ok(!dias.includes(TUESDAY));
+});
+
+test("a lista de travados esquece o que já passou", () => {
+  const shop: Shop = {
+    ...SHOP,
+    blocks: [
+      { day: "2026-08-09", start: 600, end: 660 },
+      { day: MONDAY.day, start: 9 * 60, end: 9 * 60 + 30 },
+      { day: TUESDAY, start: 900, end: 960 },
+    ],
+  };
+  // Segunda 10:00: o bloqueio de domingo e o das nove da manhã já acabaram.
+  assert.deepEqual(
+    upcomingBlocks(shop, MONDAY).map((b) => b.day),
+    [TUESDAY],
+  );
 });

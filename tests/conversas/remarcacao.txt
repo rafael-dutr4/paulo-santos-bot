@@ -8,7 +8,6 @@
 
 > oi
 < saudacao
-< menu
 
 > 2
 < meus_agendamentos

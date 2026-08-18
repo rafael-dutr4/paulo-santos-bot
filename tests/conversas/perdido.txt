@@ -5,7 +5,6 @@
 
 > oi
 < saudacao
-< menu
 
 > quero cortar o cabelo
 < nao_entendi

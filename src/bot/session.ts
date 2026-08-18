@@ -8,7 +8,7 @@
 
 import type { Agenda } from "../shop/agenda.ts";
 import type { Comanda, Item } from "../shop/comanda.ts";
-import type { PaymentId, ProductId, ServiceId, Shop } from "../shop/shop.ts";
+import type { CategoryId, PaymentId, ProductId, ServiceId, Shop } from "../shop/shop.ts";
 import type { Day, Minutes, Moment, Weekday } from "../shop/time.ts";
 
 export type StateName = string;
@@ -37,8 +37,20 @@ export type Choice =
   /** A última linha de toda lista numerada. */
   | { kind: "voltar" }
   | { kind: "weekday"; weekday: Weekday }
+  /**
+   * Uma hora travada, oferecida para destravar.
+   *
+   * Não é `slot`: `slot` é uma hora oferecida a um cliente para marcar, e um
+   * pedaço travado é o contrário disso. Separar os dois é o que deixa a lista de
+   * bloqueios ser uma lista comum, a casca esconde a lista de opções do
+   * WhatsApp justamente quando as ofertas são `slot`, porque a grade de um dia
+   * não cabe nela.
+   */
+  | { kind: "bloqueio"; day: Day; start: Minutes }
   /** A linha que mexe em todos os dias que abrem, de uma vez. */
   | { kind: "todos" }
+  /** Uma faixa da tabela de preços: barbearia, tratamentos, química. */
+  | { kind: "categoria"; id: CategoryId }
   /** A linha que leva à lista de datas fechadas. */
   | { kind: "fechados" }
   | { kind: "payment"; id: PaymentId };
@@ -74,10 +86,14 @@ export type CatalogDraft = {
   name?: string;
   price?: number;
   minutes?: number;
+  /** A faixa da tabela. Só serviço tem uma; produto não entra na parede. */
+  category?: CategoryId;
 };
 
 /** What is being assembled during a booking. */
 export type Draft = {
+  /** A faixa da tabela que o cliente abriu, para saber o que listar depois. */
+  categoryId?: CategoryId;
   serviceId?: ServiceId;
   day?: Day;
   start?: Minutes;
@@ -91,6 +107,15 @@ export type Draft = {
   asking?: "agenda" | "relatorio";
   comanda?: ComandaDraft;
   catalogo?: CatalogDraft;
+  /**
+   * O estado que fez a pergunta de hora que falhou.
+   *
+   * Uma hora inválida devolvia para o topo do ramo, e sete respostas certas
+   * antes dela iam junto. Guardando quem perguntou, o erro volta exatamente na
+   * pergunta que o produziu, com o resto do rascunho intacto: é o mesmo passo
+   * atrás que a palavra "voltar" dá.
+   */
+  pergunta?: StateName;
   /** O dia da semana cujo expediente está sendo mexido. */
   weekday?: Weekday;
   /** Ou todos os dias que abrem, de uma vez. */
@@ -110,6 +135,14 @@ export type Draft = {
   hora?: Minutes;
   /** A data que o barbeiro quer fechar ou reabrir. */
   folga?: Day;
+  /**
+   * O pedaço de dia sendo travado, enquanto ele não está inteiro.
+   *
+   * Ele fica no rascunho pela mesma razão que o `padrao`: entre o dia e a hora
+   * final nada aconteceu, e desistir no meio não pode deixar meio bloqueio
+   * gravado. O efeito sai na última resposta ou não sai.
+   */
+  bloqueio?: { day?: Day; start?: Minutes };
 };
 
 export type Session = {

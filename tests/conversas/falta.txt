@@ -14,8 +14,11 @@
 > 1
 < compareceu
 
+# A falta também devolve para a fila. Era a única em aberto, então a fila
+# vazia leva ao menu por "nada a fechar".
 > não
 < comanda_faltou
+< nada_a_fechar
 < menu_barbeiro
 
 = 2026-08-11 09:00 corte

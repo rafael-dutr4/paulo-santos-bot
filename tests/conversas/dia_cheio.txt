@@ -16,7 +16,9 @@
 
 > oi
 < saudacao
-< menu
+
+> 1
+< escolher_faixa
 
 > 1
 < escolher_servico

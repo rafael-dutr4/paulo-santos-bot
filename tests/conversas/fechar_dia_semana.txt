@@ -1,0 +1,28 @@
+# Fechar um dia da semana para sempre pede confirmação, como toda mudança que
+# não dá para desfazer sozinha. Dizer não deixa o dia como estava.
+# now: 2026-08-11 10:00
+# phone: 5577999999999
+
+> oi
+< saudacao_barbeiro
+< menu_barbeiro
+
+> 6
+< dias_horarios
+
+# 1 é a segunda-feira: a semana começa nela.
+> 1
+< editar_dia_aberto
+
+> 4
+< confirmar_fechar_semana
+
+> não
+< editar_dia_aberto
+
+> 4
+< confirmar_fechar_semana
+
+> sim
+< salvo
+< dias_horarios

@@ -22,7 +22,7 @@ import { say } from "../src/text/say.ts";
  *
  * `>` is the client, `<` is a message key the bot has to emit in that order,
  * `=` is an appointment that must exist in the agenda when the conversation
- * ends, `$` is a comanda that must exist e `~` é uma linha do catálogo — e o
+ * ends, `$` is a comanda that must exist e `~` é uma linha do catálogo, e o
  * catálogo, quando a fixture fala dele, é conferido inteiro. Reading the fixture is reading the
  * flow, which is the point: a flow that cannot be reviewed by a human is a flow
  * nobody reviews.
@@ -142,7 +142,7 @@ function short(appointment: Appointment): string {
 /** `servico corte 60 4500` e `produto bala 200`, na ordem da lista. */
 function catalogLines(settings: Settings): string[] {
   return [
-    ...settings.services.map((s) => `servico ${s.id} ${s.minutes} ${s.price}`),
+    ...settings.services.map((s) => `servico ${s.id} ${s.minutes} ${s.price} ${s.category}`),
     ...settings.products.map((p) => `produto ${p.id} ${p.price}`),
   ];
 }

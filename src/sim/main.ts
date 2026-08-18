@@ -1,7 +1,7 @@
 /**
  * O simulador: a casca fina em volta do motor.
  *
- * A página tem duas conversas com o mesmo bot — a do cliente e a do barbeiro —
+ * A página tem duas conversas com o mesmo bot, a do cliente e a do barbeiro ,
  * e um painel no meio para mexer no relógio e olhar o que o motor está
  * pensando. As duas conversas são o mesmo código de `conversa.ts` com telefones
  * diferentes, e o mesmo `Store` atrás: marcar um corte na primeira faz o
@@ -15,6 +15,7 @@ import type { Moment } from "../shop/time.ts";
 import type { Db } from "../store.ts";
 import type { Bubble } from "./chat.ts";
 import { browserNow } from "./clock.ts";
+import { ajuda } from "./ajuda.ts";
 import type { Conversa } from "./conversa.ts";
 import { conversa } from "./conversa.ts";
 import { readClock, setClock, showAgenda, showSession } from "./panel.ts";
@@ -89,6 +90,8 @@ function repaint(): void {
 function start(): void {
   setClock(browserNow());
   repaint();
+  // A ajuda é escrita uma vez: ela não depende do relógio nem do banco.
+  ajuda(el("ajuda"));
 
   const abas = tabs(el("abas"), (id) => {
     // Voltar para uma conversa depois de mexer no painel: o fim da lista é o

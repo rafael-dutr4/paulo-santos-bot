@@ -16,7 +16,7 @@ export type ProductId = string;
  * O que a barbearia vende sem cortar nada: pomada, shampoo, refrigerante.
  *
  * Um produto não é um serviço com duração zero. Ele não ocupa a cadeira, não
- * aparece no menu de agendamento e ninguém marca horário para comprar bala —
+ * aparece no menu de agendamento e ninguém marca horário para comprar bala ,
  * ele só entra na comanda, no fim, junto com o que foi feito.
  */
 export type Product = {
@@ -24,6 +24,24 @@ export type Product = {
   name: string;
   /** Em centavos. */
   price: number;
+};
+
+/**
+ * As três faixas da tabela de preços da parede.
+ *
+ * Elas são código, e não dado do banco, pela mesma razão que as formas de
+ * pagamento: o barbeiro cria serviço toda semana e não cria uma faixa nova ,
+ * "Barbearia, Tratamentos, Química" é como a barbearia se descreve, e isso muda
+ * de ano em ano, não de conversa em conversa. O que ele escolhe, num serviço
+ * novo, é em qual das três ele entra.
+ */
+export type CategoryId = "barbearia" | "tratamentos" | "quimica";
+
+export type Category = {
+  id: CategoryId;
+  name: string;
+  /** O ícone da faixa na parede, que a mensagem repete. */
+  emoji: string;
 };
 
 export type Service = {
@@ -34,6 +52,8 @@ export type Service = {
   minutes: Minutes;
   /** In centavos, so no money is ever held in a float. */
   price: number;
+  /** Em qual faixa da tabela ele aparece. */
+  category: CategoryId;
 };
 
 /**
@@ -44,6 +64,18 @@ export type PaymentId = "dinheiro" | "pix" | "debito" | "credito";
 
 /** `[start, end)` in minutes since midnight. */
 export type Interval = { start: Minutes; end: Minutes };
+
+/**
+ * Um pedaço de um dia em que a barbearia não atende, num dia em que ela abre.
+ *
+ * O médico às três da sexta, o casamento do primo às cinco. É a mesma ideia de
+ * um dia fechado, num pedaço menor: `holidays` tira o dia inteiro da conta e um
+ * bloqueio tira um intervalo dele. Os dois moram nos ajustes, e não na agenda,
+ * porque nenhum dos dois é uma promessa feita a alguém, a agenda guarda o que
+ * foi prometido a um cliente, e um bloqueio não tem cliente, não tem serviço,
+ * não vira comanda e não entra no relatório.
+ */
+export type Block = { day: Day } & Interval;
 
 export type PeriodId = "manha" | "tarde";
 
@@ -89,8 +121,12 @@ export type Shop = {
   horizonDays: number;
   /** Days the shop is closed regardless of the weekday. */
   holidays: Day[];
+  /** Os pedaços de dia que o barbeiro travou, um a um. */
+  blocks: Block[];
   /** As formas de pagamento aceitas, na ordem em que a comanda as oferece. */
   payments: PaymentId[];
+  /** As faixas da tabela, na ordem em que ela está na parede. */
+  categories: Category[];
 };
 
 export const SHOP: Shop = {
@@ -102,25 +138,75 @@ export const SHOP: Shop = {
   barbers: ["5577999999999"],
   /**
    * A tabela de preços da parede, na ordem em que ela está lá: barbearia,
-   * tratamentos e depois química. O tempo de cada um não está na parede — ele
+   * tratamentos e depois química. O tempo de cada um não está na parede, ele
    * é o que a cadeira leva, e é o barbeiro quem acerta pela conversa.
    */
+  categories: [
+    { id: "barbearia", name: "Barbearia", emoji: "✂️" },
+    { id: "tratamentos", name: "Tratamentos", emoji: "🧴" },
+    { id: "quimica", name: "Química & coloração", emoji: "🧪" },
+  ],
   services: [
-    { id: "corte", name: "Corte", minutes: 60, price: 4000 },
-    { id: "barba", name: "Barba", minutes: 45, price: 4000 },
-    { id: "bigode", name: "Bigode", minutes: 15, price: 500 },
-    { id: "pezinho", name: "Acabamento / pezinho", minutes: 30, price: 1500 },
-    { id: "sobrancelha", name: "Sobrancelha", minutes: 15, price: 1500 },
-    { id: "cavanhaque", name: "Cavanhaque", minutes: 30, price: 2000 },
-    { id: "depilacao_nasal", name: "Depilação nasal", minutes: 15, price: 1500 },
-    { id: "limpeza_pele", name: "Limpeza de pele", minutes: 45, price: 4500 },
-    { id: "hidratacao_cabelo", name: "Hidratação no cabelo", minutes: 30, price: 2000 },
-    { id: "hidratacao_barba", name: "Hidratação na barba", minutes: 30, price: 2000 },
-    { id: "pigmentacao_cabelo", name: "Pigmentação no cabelo", minutes: 30, price: 3500 },
-    { id: "pigmentacao_barba", name: "Pigmentação na barba", minutes: 30, price: 3500 },
-    { id: "progressiva", name: "Progressiva / selagem", minutes: 120, price: 10000 },
-    { id: "platinado", name: "Platinado", minutes: 180, price: 16000 },
-    { id: "luzes_platinadas", name: "Luzes platinadas", minutes: 180, price: 16000 },
+    { id: "corte", name: "Corte", minutes: 60, price: 4000, category: "barbearia" },
+    { id: "barba", name: "Barba", minutes: 45, price: 4000, category: "barbearia" },
+    // O combo custa menos que os dois separados (R$ 80) e ocupa menos cadeira
+    // que a soma (105 min): é o mesmo cliente, na mesma sentada.
+    { id: "corte_barba", name: "Corte + barba", minutes: 90, price: 7500, category: "barbearia" },
+    { id: "bigode", name: "Bigode", minutes: 15, price: 500, category: "barbearia" },
+    { id: "pezinho", name: "Acabamento / pezinho", minutes: 30, price: 1500, category: "barbearia" },
+    { id: "sobrancelha", name: "Sobrancelha", minutes: 15, price: 1500, category: "barbearia" },
+    { id: "cavanhaque", name: "Cavanhaque", minutes: 30, price: 2000, category: "barbearia" },
+    {
+      id: "depilacao_nasal",
+      name: "Depilação nasal",
+      minutes: 15,
+      price: 1500,
+      category: "barbearia",
+    },
+    { id: "limpeza_pele", name: "Limpeza de pele", minutes: 45, price: 4500, category: "tratamentos" },
+    {
+      id: "hidratacao_cabelo",
+      name: "Hidratação no cabelo",
+      minutes: 30,
+      price: 2000,
+      category: "tratamentos",
+    },
+    {
+      id: "hidratacao_barba",
+      name: "Hidratação na barba",
+      minutes: 30,
+      price: 2000,
+      category: "tratamentos",
+    },
+    {
+      id: "pigmentacao_cabelo",
+      name: "Pigmentação no cabelo",
+      minutes: 30,
+      price: 3500,
+      category: "tratamentos",
+    },
+    {
+      id: "pigmentacao_barba",
+      name: "Pigmentação na barba",
+      minutes: 30,
+      price: 3500,
+      category: "tratamentos",
+    },
+    {
+      id: "progressiva",
+      name: "Progressiva / selagem",
+      minutes: 120,
+      price: 10000,
+      category: "quimica",
+    },
+    { id: "platinado", name: "Platinado", minutes: 180, price: 16000, category: "quimica" },
+    {
+      id: "luzes_platinadas",
+      name: "Luzes platinadas",
+      minutes: 180,
+      price: 16000,
+      category: "quimica",
+    },
   ],
   products: [
     { id: "pomada", name: "Pomada", price: 3000 },
@@ -154,6 +240,8 @@ export const SHOP: Shop = {
   minNotice: 30,
   horizonDays: 14,
   holidays: ["2026-09-07", "2026-12-25", "2027-01-01"],
+  /** A barbearia abre sem nada travado: bloqueio é coisa do dia a dia. */
+  blocks: [],
   payments: ["dinheiro", "pix", "debito", "credito"],
 };
 
@@ -161,8 +249,8 @@ export const SHOP: Shop = {
  * A parte da barbearia que o barbeiro edita pela conversa.
  *
  * Preço e tempo mudam com o mercado, produto novo chega toda semana, e o dia
- * de folga é decidido na quinta à noite. O resto — endereço, telefone, formas
- * de pagamento, o tamanho da grade — muda de ano em ano e continua sendo dado
+ * de folga é decidido na quinta à noite. O resto, endereço, telefone, formas
+ * de pagamento, o tamanho da grade, muda de ano em ano e continua sendo dado
  * de código.
  *
  * Por isso isto mora no banco e não aqui: `SHOP` guarda com o que a barbearia
@@ -175,7 +263,27 @@ export type Settings = {
   products: Product[];
   hours: Record<Weekday, Interval[]>;
   holidays: Day[];
+  blocks: Block[];
 };
+
+/**
+ * Os serviços partidos nas faixas da parede, na ordem da parede.
+ *
+ * A mesma forma de `byPeriod()` para as horas: uma faixa vazia não aparece, e
+ * a numeração de quem monta a lista corre por cima dos títulos, de ponta a
+ * ponta, quem lê conta a lista inteira, e não cada bloco.
+ */
+export function byCategory(
+  shop: Shop,
+  services: Service[],
+): { category: Category; services: Service[] }[] {
+  return shop.categories
+    .map((category) => ({
+      category,
+      services: services.filter((service) => service.category === category.id),
+    }))
+    .filter((group) => group.services.length > 0);
+}
 
 export function settingsOf(shop: Shop): Settings {
   return {
@@ -183,6 +291,7 @@ export function settingsOf(shop: Shop): Settings {
     products: shop.products,
     hours: shop.hours,
     holidays: shop.holidays,
+    blocks: shop.blocks,
   };
 }
 
@@ -194,7 +303,7 @@ export function withSettings(shop: Shop, settings: Settings): Shop {
  * O horário de um dia lido como o barbeiro pensa nele: abre, fecha e almoço.
  *
  * No dado são intervalos, porque é assim que a subtração de `slots.ts` funciona
- * e porque o almoço não é uma regra em lugar nenhum — ele é o buraco entre dois
+ * e porque o almoço não é uma regra em lugar nenhum, ele é o buraco entre dois
  * intervalos. Na conversa são três perguntas, que é como uma pessoa descreve o
  * próprio dia.
  */
@@ -226,7 +335,7 @@ export function intervalsOf(expediente: Expediente): Interval[] {
  *
  * Sem sorteio e sem contador: "Óleo para barba" vira `oleo_para_barba`, e o
  * mesmo nome dá sempre o mesmo id. Se já existir um igual, ganha um número no
- * fim — dois produtos com o mesmo nome são raros, mas um id repetido somaria os
+ * fim, dois produtos com o mesmo nome são raros, mas um id repetido somaria os
  * dois no relatório.
  */
 export function idFrom(name: string, existing: string[]): string {

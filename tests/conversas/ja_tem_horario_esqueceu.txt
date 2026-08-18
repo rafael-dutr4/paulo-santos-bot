@@ -6,7 +6,6 @@
 
 > oi
 < saudacao
-< menu
 
 > 1
 < ja_tem_horario
@@ -25,5 +24,8 @@
 < menu
 
 # Sem horário nenhum, o aviso não aparece e o menu leva direto aos serviços.
+> 1
+< escolher_faixa
+
 > 1
 < escolher_servico

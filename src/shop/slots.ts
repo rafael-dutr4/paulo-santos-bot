@@ -14,7 +14,7 @@
 
 import type { Agenda } from "./agenda.ts";
 import { busyOn } from "./agenda.ts";
-import type { Interval, Period, Service, Shop } from "./shop.ts";
+import type { Block, Interval, Period, Service, Shop } from "./shop.ts";
 import type { Day, Minutes, Moment } from "./time.ts";
 import { addDays, weekday } from "./time.ts";
 
@@ -29,6 +29,28 @@ export function isOpen(shop: Shop, day: Day): boolean {
 
 export function overlaps(a: Interval, b: Interval): boolean {
   return a.start < b.end && b.start < a.end;
+}
+
+/**
+ * Os pedaços de um dia que o barbeiro travou.
+ *
+ * Um bloqueio ocupa a cadeira do mesmo jeito que um agendamento ocupa: para a
+ * conta de horas livres os dois são um intervalo tomado, e é só isso que
+ * `freeSlots` precisa saber sobre eles. Foi por isso que a conta ficou de uma
+ * linha, a sobreposição já estava escrita, e faltava só somar mais uma lista
+ * de intervalos à que ela subtrai.
+ */
+export function blockedOn(shop: Shop, day: Day): Interval[] {
+  return shop.blocks
+    .filter((block) => block.day === day)
+    .map(({ start, end }) => ({ start, end }));
+}
+
+/** Os bloqueios de hoje para a frente, na ordem. As horas que passaram não interessam. */
+export function upcomingBlocks(shop: Shop, now: Moment): Block[] {
+  return shop.blocks
+    .filter((block) => block.day > now.day || (block.day === now.day && block.end > now.at))
+    .sort((a, b) => (a.day === b.day ? a.start - b.start : a.day < b.day ? -1 : 1));
 }
 
 /**
@@ -47,7 +69,9 @@ export function freeSlots(
   service: Service,
   now: Moment,
 ): Minutes[] {
-  const busy = busyOn(agenda, day);
+  // O que a cadeira já tem em cima: o que foi prometido a alguém, e o que o
+  // barbeiro travou. Para esta conta os dois são a mesma coisa.
+  const busy = [...busyOn(agenda, day), ...blockedOn(shop, day)];
   const earliest = day === now.day ? now.at + shop.minNotice : 0;
   const slots: Minutes[] = [];
 

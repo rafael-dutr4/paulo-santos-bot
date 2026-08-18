@@ -1,0 +1,81 @@
+# O barbeiro trava um pedaço de um dia: médico na sexta, das 15 às 16. Ele
+# recusa travar por cima de quem já está marcado, recusa um horário que não
+# fecha, e destrava escolhendo na lista.
+# now: 2026-08-11 10:00
+# phone: 5577999999999
+# agenda: 2026-08-14 15:00 corte 5511922222222 Zé
+
+> oi
+< saudacao_barbeiro
+< menu_barbeiro
+
+# Travar é a 7, no menu de cima: é coisa do dia a dia, e não ajuste da semana.
+> 7
+< bloqueios
+
+# Nada travado ainda, então a lista é só o convite: 1 é travar.
+> 1
+< pedir_dia_bloqueio
+
+# 14/08 é a sexta, e o Zé está marcado às 15:00.
+> 14/08
+< pedir_inicio_bloqueio
+
+> 15:00
+< pedir_fim_bloqueio
+
+# Travar por cima do Zé seria desmarcá-lo sem avisar. O bot mostra quem está
+# lá e não escreve nada.
+> 16:00
+< hora_tem_gente
+< bloqueios
+
+# O fim tem que vir depois do começo.
+> 1
+< pedir_dia_bloqueio
+
+> 14/08
+< pedir_inicio_bloqueio
+
+> 15:00
+< pedir_fim_bloqueio
+
+> 14:00
+< hora_invalida
+< bloqueios
+
+# Numa sexta livre, o mesmo pedaço trava.
+> 1
+< pedir_dia_bloqueio
+
+> 21/08
+< pedir_inicio_bloqueio
+
+> três da tarde
+< pedir_fim_bloqueio
+
+> 16:00
+< bloqueado
+< bloqueios
+
+# Agora a lista tem uma linha, e travar virou a 2.
+> 2
+< pedir_dia_bloqueio
+
+> 21/08
+< pedir_inicio_bloqueio
+
+> 09:00
+< pedir_fim_bloqueio
+
+> 10:00
+< bloqueado
+< bloqueios
+
+# Escolher um travado destrava, como escolher uma data fechada reabre. A lista
+# está em ordem de hora: 09:00 é a 1.
+> 1
+< desbloqueado
+< bloqueios
+
+= 2026-08-14 15:00 corte
